@@ -1,0 +1,79 @@
+# ============================
+# Node / Dependencies
+# ============================
+node_modules/
+.pnp
+.pnp.js
+
+# ============================
+# Environment / Secrets (NEVER commit these)
+# ============================
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+
+# ============================
+# Build Outputs
+# ============================
+dist/
+build/
+out/
+.next/
+.nuxt/
+
+# ============================
+# TypeScript compiled output
+# ============================
+*.js.map
+*.d.ts.map
+
+# ============================
+# Logs
+# ============================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ============================
+# OS / Editor artifacts
+# ============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ============================
+# Temporary / Scratch files
+# ============================
+scratch*.ts
+scratch*.js
+test_*.ts
+test_*.js
+
+# ============================
+# AWS / Cloud credentials
+# ============================
+.aws/
+credentials
+*.pem
+*.key
+*.cert
+*.p12
+
+# ============================
+# Coverage & Testing
+# ============================
+coverage/
+.nyc_output/
