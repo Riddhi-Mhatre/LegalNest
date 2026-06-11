@@ -19,3 +19,22 @@ export const requireRole = (roles: string[]) => {
     next();
   };
 };
+
+export const authorize =
+(...roles: string[]) =>
+(req: any, res: any, next: any) => {
+
+  const userRole =
+    req.user.role;
+
+  if(
+    !roles.includes(userRole)
+  ){
+    return res.status(403).json({
+      message:
+      'Access denied'
+    });
+  }
+
+  next();
+};

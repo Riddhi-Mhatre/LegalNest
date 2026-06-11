@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as adminController from '../../controllers/adminController';
 import { authenticate } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
+import { authorize } from '../../middleware/authorize';
 
 const router = Router();
 
@@ -16,5 +17,9 @@ router.put('/properties/:id/approve', adminController.approveProperty);
 router.put('/properties/:id/reject', adminController.rejectProperty);
 router.post('/auctions', adminController.scheduleAuction);
 router.put('/interests/:interestId/approve', adminController.approveInterest);
+router.use(
+  authenticate,
+  requireRole(['admin'])
+);
 
 export default router;

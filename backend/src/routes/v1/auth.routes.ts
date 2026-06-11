@@ -3,6 +3,7 @@ import * as authController from '../../controllers/authController';
 import { validate } from '../../middleware/validation';
 import { authLimiter } from '../../middleware/rateLimit';
 import { loginSchema, registerSchema, otpSchema } from '../../validators/auth.validator';
+import { authorize } from '../../middleware/authorize';
 
 const router = Router();
 

@@ -77,3 +77,9 @@ credentials
 # ============================
 coverage/
 .nyc_output/
+
+SKILL-caveman.md
+SKILL-frontend.md
+all.md
+backend.md
+frontend.md

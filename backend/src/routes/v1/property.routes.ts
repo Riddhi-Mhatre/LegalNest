@@ -3,6 +3,7 @@ import * as propertyController from '../../controllers/propertyController';
 import { authenticate } from '../../middleware/auth';
 import { requireRole } from '../../middleware/rbac';
 import { generalLimiter } from '../../middleware/rateLimit';
+import { authorize } from '../../middleware/authorize';
 
 const router = Router();
 
@@ -14,5 +15,8 @@ router.delete('/:id', authenticate, requireRole(['seller', 'admin']), propertyCo
 router.post('/:id/interest', authenticate, requireRole(['buyer']), propertyController.expressInterest);
 router.post('/:id/favorite', authenticate, requireRole(['buyer']), propertyController.saveFavorite);
 router.get('/:id/upload-url', authenticate, requireRole(['seller']), propertyController.getUploadUrl);
-
+router.use(
+  authenticate,
+  requireRole(['seller'])
+);
 export default router;

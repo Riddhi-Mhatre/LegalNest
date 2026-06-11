@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as membershipController from '../../controllers/membershipController';
 import { authenticate } from '../../middleware/auth';
+import { authorize } from '../../middleware/authorize'; 
 
 const router = Router();
 
