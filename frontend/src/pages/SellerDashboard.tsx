@@ -2,6 +2,7 @@ import { Building2, Plus, Eye, TrendingUp, DollarSign } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { getProperties } from '../services/propertyService';
+import { useNavigate } from 'react-router-dom';
 import {
   AreaChart,
   Area,
@@ -33,6 +34,7 @@ const trendingData = [
 
 export default function SellerDashboard() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   
   const { data: properties = [], isLoading } = useQuery({
     queryKey: ['properties', 'seller'],
@@ -61,7 +63,9 @@ export default function SellerDashboard() {
               Command center for your premium real estate portfolio.
             </p>
           </div>
-          <button className="bg-primary text-black font-bold uppercase tracking-widest px-8 py-4 rounded-none hover:bg-white transition-colors duration-300 flex items-center justify-center gap-3 group">
+          <button 
+          onClick={()=>navigate("/seller/add-property")}
+          className="bg-primary text-black font-bold uppercase tracking-widest px-8 py-4 rounded-none hover:bg-white transition-colors duration-300 flex items-center justify-center gap-3 group">
             <Plus size={20} className="group-hover:rotate-90 transition-transform duration-300" /> 
             New Listing
           </button>

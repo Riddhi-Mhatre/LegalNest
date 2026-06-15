@@ -20,6 +20,7 @@ const AuctionsListPage = lazy(() => import('./pages/AuctionsListPage'));
 const AuctionRoomPage = lazy(() => import('./pages/AuctionRoomPage'));
 const BuyerDashboard = lazy(() => import('./pages/BuyerDashboard'));
 const SellerDashboard = lazy(() => import('./pages/SellerDashboard'));
+const AddPropertyPage = lazy(() => import('./pages/AddPropertyPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
@@ -57,8 +58,16 @@ export default function App() {
 
               {/* Protected – Seller */}
               <Route element={<PrivateRoute allowedRoles={['seller']} />}>
-                <Route path="/seller/dashboard" element={<SellerDashboard />} />
-              </Route>
+              <Route 
+              path="/seller/dashboard" 
+              element={<SellerDashboard />} 
+              />
+              <Route 
+              path="/seller/add-property" 
+              element={<AddPropertyPage />} 
+  />
+
+</Route>
 
               {/* Protected – Admin */}
               <Route element={<PrivateRoute allowedRoles={['admin']} />}>
