@@ -1,31 +1,31 @@
-import {
-  Request,
-  Response,
-  NextFunction
-} from 'express';
+import { Response, NextFunction } from 'express';
+import { AuthRequest } from './auth';
 
 export const authorize =
-(...roles: string[]) =>
-(
- req: Request,
- res: Response,
- next: NextFunction
-) => {
+  (...roles: string[]) =>
+  (
+    req: AuthRequest,
+    res: Response,
+    next: NextFunction
+  ) => {
 
-  const role =
-   (req as any).user?.role;
+    const userRole =
+      req.user?.role;
 
- if (
-  !role ||
-  !roles.includes(role)
- ) {
+    if (
+      !userRole ||
+      !roles.includes(userRole)
+    ) {
 
-  return res.status(403).json({
-   message:
-   'Access denied'
-  });
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'AUTH_002',
+          message: 'Access denied'
+        }
+      });
 
- }
+    }
 
- next();
-};
+    next();
+  };
