@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from '../store/authStore';
-import { Check, Shield, Zap, Sparkles, Building2, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Check, Shield, Sparkles, Building2, User } from 'lucide-react';
 
 const PLANS = {
   buyer: {
@@ -59,7 +58,7 @@ export default function MembershipPage() {
             Choose Your <span className={isBuyer ? 'text-gradient-gold' : 'text-gradient-teal'}>Power</span>
           </h1>
           <p className="text-lg md:text-xl text-muted max-w-2xl mx-auto">
-            Unlock the full potential of GharBid. Zero hidden fees. Unmatched transparency.
+            Unlock the full potential of LegalNest. Zero hidden fees. Unmatched transparency.
           </p>
         </div>
 
@@ -110,7 +109,7 @@ export default function MembershipPage() {
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-center">
-          {activePlans.map((plan, i) => {
+          {activePlans.map((plan, _i) => {
             const isPop = plan.isPopular;
             return (
               <div

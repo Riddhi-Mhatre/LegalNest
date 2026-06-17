@@ -21,10 +21,13 @@ const AuctionRoomPage = lazy(() => import('./pages/AuctionRoomPage'));
 const BuyerDashboard = lazy(() => import('./pages/BuyerDashboard'));
 const SellerDashboard = lazy(() => import('./pages/SellerDashboard'));
 const AddPropertyPage = lazy(() => import('./pages/AddPropertyPage'));
+const MyPropertiesPage = lazy(() => import('./pages/MyPropertiesPage'));
+const PaymentsPage = lazy(() => import('./pages/PaymentsPage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const ChatPage = lazy(() => import('./pages/ChatPage'));
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const DocumentUploadPage = lazy(() => import('./pages/DocumentUploadPage'));
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -58,16 +61,13 @@ export default function App() {
 
               {/* Protected – Seller */}
               <Route element={<PrivateRoute allowedRoles={['seller']} />}>
-              <Route 
-              path="/seller/dashboard" 
-              element={<SellerDashboard />} 
-              />
-              <Route 
-              path="/seller/add-property" 
-              element={<AddPropertyPage />} 
-  />
-
-</Route>
+                <Route path="/seller" element={<SellerDashboard />} />
+                <Route path="/seller/dashboard" element={<SellerDashboard />} />
+                <Route path="/seller/add-property" element={<AddPropertyPage />} />
+                <Route path="/seller/my-properties" element={<MyPropertiesPage />} />
+                <Route path="/seller/payments" element={<PaymentsPage />} />
+                <Route path="/seller/documents" element={<DocumentUploadPage />} />
+              </Route>
 
               {/* Protected – Admin */}
               <Route element={<PrivateRoute allowedRoles={['admin']} />}>

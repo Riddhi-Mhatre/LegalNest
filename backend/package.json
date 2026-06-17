@@ -1,16 +1,16 @@
 {
-  "name": "gharbid-backend",
+  "name": "legalnest-backend",
   "version": "1.0.0",
-  "description": "GharBid Backend – Node.js + Express + TypeScript + AWS",
-  "main": "dist/server.js",
+  "description": "LegalNest Backend – Node.js + Express + JavaScript + AWS",
+  "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
-    "build": "tsc",
-    "start": "node dist/server.js",
-    "lint": "eslint src --ext .ts",
-    "test": "jest",
-    "seed": "ts-node scripts/seedDatabase.ts",
-    "create-tables": "ts-node scripts/createTables.ts"
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "lint": "eslint src --ext .js",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
+    "seed": "node scripts/seedDatabase.js",
+    "create-tables": "node scripts/createTables.js"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.1064.0",
@@ -35,17 +35,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/aws-sdk": "^0.0.42",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/jest": "^29.5.12",
-    "@types/jsonwebtoken": "^9.0.6",
-    "@types/morgan": "^1.9.9",
-    "@types/node": "^20.14.2",
-    "@types/uuid": "^10.0.0",
-    "jest": "^29.7.0",
-    "ts-jest": "^29.1.4",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.4.5"
+    "jest": "^29.7.0"
   }
 }

@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
       })),
     }),
     {
-      name: 'gharbid-auth',
+      name: 'legalnest-auth',
       partialize: (state) => ({ 
         user: state.user, 
         token: state.token, 
