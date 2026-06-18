@@ -3,12 +3,15 @@ import * as propertyController from '../../controllers/propertyController.js';
 import { authenticate } from '../../middleware/auth.js';
 import { requireRole } from '../../middleware/rbac.js';
 import { generalLimiter } from '../../middleware/rateLimit.js';
+import {
+  saveDocuments
+} from "../../controllers/sellerController.js";
 
 const router = Router();
 
 // ─── Static/special routes MUST come before /:id ───────────────────────────
 // upload-url must be before /:id or Express will match 'upload-url' as an id
-router.get('/upload-url', authenticate, requireRole(['seller']), propertyController.getUploadUrl);
+router.post('/upload-url', authenticate, requireRole(['seller']), propertyController.getUploadUrl);
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 router.get('/', generalLimiter, propertyController.listProperties);

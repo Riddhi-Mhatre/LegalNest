@@ -1,4 +1,5 @@
 import { api } from './api';
+import axios from "axios";
 
 export interface SellerDashboardData {
   totalProperties: number;
@@ -24,49 +25,103 @@ export const getImageUploadUrl = (
 ): Promise<{ uploadUrl: string }> =>
   api.get('/properties/upload-url', { params: { fileName, fileType } }).then(r => r.data.data);
 
-export const uploadImageToS3 = async (file: File): Promise<string> => {
-  const { uploadUrl } = await getImageUploadUrl(file.name, file.type);
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  });
-  if (!res.ok) throw new Error(`S3 upload failed: ${res.status}`);
-  // Return the public S3 URL (without presign query params)
-  return uploadUrl.split('?')[0];
+export const uploadFileToS3 = async (file: File) => {
+  try {
+    console.log("Uploading:", file.name);
+
+    const response = await api.post(
+      "/properties/upload-url",
+      {
+        fileName: file.name,
+        contentType: file.type,
+      }
+    );
+
+    console.log("Upload URL response:", response.data);
+
+    // Backend returns { uploadUrl, publicUrl, key } directly (not wrapped in .data)
+    const { uploadUrl, publicUrl } = response.data;
+
+    await axios.put(uploadUrl, file, {
+      headers: {
+        "Content-Type": file.type,
+      },
+    });
+
+    console.log("Upload successful:", publicUrl);
+
+    return publicUrl;
+  } catch (error) {
+    console.error("S3 Upload Error:", error);
+    throw error;
+  }
+};
+// ─── Document Upload (Documents Bucket) ─────────────────────────────────────
+export const getDocumentUploadUrl = async (
+  propertyId: string,
+  fileName: string,
+  contentType: string
+) => {
+  const response = await api.get(
+    "/seller/document-upload-url",
+    {
+      params: {
+  propertyId,
+  fileName,
+  fileType: contentType,
+   },
+    }
+  );
+
+  return response.data;
 };
 
-// ─── Document Upload (Documents Bucket) ─────────────────────────────────────
-export const getDocumentUploadUrl = (
-  fileName: string,
-  fileType: string,
-  docType: string
-): Promise<{ uploadUrl: string; s3Key: string }> =>
-  api
-    .get('/seller/document-upload-url', { params: { fileName, fileType, docType } })
-    .then(r => r.data.data);
-
 export const uploadDocumentToS3 = async (
-  file: File,
-  docType: string
-): Promise<{ s3Key: string; fileName: string }> => {
-  const { uploadUrl, s3Key } = await getDocumentUploadUrl(file.name, file.type, docType);
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    body: file,
-    headers: { 'Content-Type': file.type },
-  });
-  if (!res.ok) throw new Error(`Document upload failed: ${res.status}`);
-  return { s3Key, fileName: file.name };
+  propertyId: string,
+  file: File
+) => {
+
+  const response =
+  await getDocumentUploadUrl(
+    propertyId,
+    file.name,
+    file.type
+  );
+
+const {
+  uploadUrl,
+  s3Key
+} = response.data;
+
+  await axios.put(
+    uploadUrl,
+    file,
+    {
+      headers: {
+        "Content-Type": file.type,
+      },
+    }
+  );
+
+  return s3Key;
 };
 
 // ─── Save documents to property ─────────────────────────────────────────────
-export const saveDocumentsToProperty = (
+export const saveDocumentsToProperty =
+async (
   propertyId: string,
-  documents: string[]
-): Promise<any> =>
-  api.patch(`/seller/properties/${propertyId}/documents`, { documents }).then(r => r.data.data);
+  documents: any[]
+) => {
 
+  const response = await api.patch(
+    `/seller/properties/${propertyId}/documents`,
+    {
+      documents,
+    }
+  );
+
+  return response.data;
+};
 // ─── Platform fee payment ────────────────────────────────────────────────────
 export const payPlatformFee = (propertyId: string): Promise<any> =>
   api.post(`/seller/properties/${propertyId}/pay-fee`).then(r => r.data.data);

@@ -2,6 +2,10 @@ import * as PropertyModel from '../models/dynamodb/PropertyModel.js';
 import * as s3Service from '../services/s3Service.js';
 import { generateUUID } from '../utils/helpers.js';
 import { HTTP } from '../utils/constants.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3Client } from '../config/aws.js';
+import { env } from '../config/env.js';
 
 // GET /v1/properties
 export const listProperties = async (req, res, next) => {
@@ -119,13 +123,38 @@ export const saveFavorite = async (req, res, next) => {
   }
 };
 
-// GET /v1/properties/upload-url
-export const getUploadUrl = async (req, res, next) => {
+// POST /v1/properties/upload-url
+export const getUploadUrl = async (req, res) => {
   try {
-    const { fileName, fileType } = req.query;
-    const url = await s3Service.getMediaUploadUrl(fileName, fileType);
-    res.json({ success: true, data: { uploadUrl: url } });
-  } catch (err) {
-    next(err);
+    const { fileName, contentType } = req.body;
+
+    const key = `properties/${req.user.userId}/${Date.now()}-${fileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket: env.S3_UPLOADS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    });
+
+    const uploadUrl = await getSignedUrl(
+      s3Client,
+      command,
+      { expiresIn: 300 }
+    );
+
+    const publicUrl =
+      `https://${env.S3_UPLOADS_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+
+    res.json({
+      uploadUrl,
+      publicUrl,
+      key,
+    });
+  } catch (error) {
+    console.error('getUploadUrl error:', error);
+    res.status(500).json({
+      message: "Failed to generate upload URL",
+      detail: error.message,
+    });
   }
 };

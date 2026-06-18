@@ -18,8 +18,13 @@ export const dynamoClient = DynamoDBDocumentClient.from(dynamoRawClient, {
 // Cognito
 export const cognitoClient = new CognitoIdentityProviderClient(clientConfig);
 
-// S3
-export const s3Client = new S3Client(clientConfig);
+// S3 — requestChecksumCalculation: WHEN_REQUIRED prevents SDK v3 from
+// auto-injecting x-amz-checksum-crc32 into presigned PUT URLs.
+// Browsers cannot satisfy that signed header, causing CORS preflight failures.
+export const s3Client = new S3Client({
+  ...clientConfig,
+  requestChecksumCalculation: 'WHEN_REQUIRED',
+});
 
 // SES
 export const sesClient = new SESClient(clientConfig);

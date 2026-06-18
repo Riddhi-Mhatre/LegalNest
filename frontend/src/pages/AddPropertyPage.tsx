@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createProperty } from '../services/propertyService';
-import { uploadImageToS3 } from '../services/sellerService';
+import { saveDocumentsToProperty, uploadDocumentToS3, uploadFileToS3 } from '../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
-  Upload, ChevronRight, ChevronLeft, Loader2, X
+  Upload, ChevronRight, ChevronLeft, Loader2, X, FileText, AlertCircle
 } from 'lucide-react';
+
+type DocStatus = 'pending' | 'uploading' | 'done' | 'error';
+interface DocEntry { name: string; status: DocStatus; error?: string; }
+
 
 const AMENITY_OPTIONS = [
   'Lift', 'Parking', 'Gym', 'Garden',
@@ -28,6 +32,10 @@ export default function AddPropertyPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [docEntries, setDocEntries] = useState<DocEntry[]>([]);
+  const [docsComplete, setDocsComplete] = useState(false);
 
   const [form, setForm] = useState({
     title: '',
@@ -59,59 +67,115 @@ export default function AddPropertyPage() {
         ? form.amenities.filter(x => x !== a)
         : [...form.amenities, a]
     );
+  const [images, setImages] = useState<string[]>([]);
+  
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-    setUploadingImages(true);
-    try {
-      const files = Array.from(e.target.files);
-      const urls = await Promise.all(files.map(uploadImageToS3));
-      set('images', [...form.images, ...urls]);
-    } catch {
-      alert('Image upload failed. Please try again.');
-    } finally {
-      setUploadingImages(false);
-    }
-  };
+
+ const handleImageUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  if (!e.target.files?.length) return;
+
+  setUploadingImages(true);
+
+  try {
+    const files = Array.from(e.target.files);
+
+    
+    const urls = await Promise.all(
+      files.map(uploadFileToS3)
+    );
+
+    console.log("Uploaded URLs:", urls); // Debugging
+
+    
+    set('images', [...form.images, ...urls]);
+    
+
+  } catch (error) {
+    console.error("Image upload error:", error);
+    alert('Image upload failed. Please try again.');
+  } finally {
+    setUploadingImages(false);
+  }
+};
 
   const removeImage = (idx: number) =>
     set('images', form.images.filter((_, i) => i !== idx));
 
   const { mutate: submitProperty, isPending } = useMutation({
-    mutationFn: () =>
-      createProperty({
-        title: form.title,
-        description: form.description,
-        type: form.type,
-        listingType: form.listingType,
-        salePrice: form.salePrice ? Number(form.salePrice) : undefined,
-        rentPrice: form.rentPrice ? Number(form.rentPrice) : undefined,
-        price: form.salePrice ? Number(form.salePrice) : Number(form.rentPrice),
-        securityDeposit: form.securityDeposit ? Number(form.securityDeposit) : undefined,
-        rentPeriod: form.listingType === 'rent' ? form.rentPeriod : undefined,
-        bedrooms: Number(form.bedrooms) || 0,
-        bathrooms: Number(form.bathrooms) || 0,
-        area: Number(form.area) || 0,
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        location: {
-          address: form.address,
-          city: form.city,
-          state: form.state,
-          pincode: form.pincode,
-          lat: 0,
-          lng: 0,
-          geohash: '',
-        },
-        amenities: form.amenities,
-        images: form.images,
-        coverImage: form.images[0] ?? '',
-      }),
-    onSuccess: () => navigate('/seller'),
-    onError: () => alert('Failed to add property. Please try again.'),
-  });
+  mutationFn: () =>
+    createProperty({
+      // existing form data
+    }),
+
+  onSuccess: (data) => {
+
+    // Save property ID returned by backend
+    setPropertyId(data.propertyId);
+
+    alert(
+      "Property created successfully! Now upload legal documents."
+    );
+
+    // Remove this for now:
+    // navigate('/seller');
+  },
+
+  onError: () => {
+    alert(
+      'Failed to add property. Please try again.'
+    );
+  },
+});
+
+  const handleDocumentUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  if (!propertyId || !e.target.files?.length) return;
+
+  const files = Array.from(e.target.files);
+
+  // Initialise entry list shown in UI
+  const initial: DocEntry[] = files.map(f => ({ name: f.name, status: 'pending' }));
+  setDocEntries(initial);
+  setUploadingDocs(true);
+  setDocsComplete(false);
+
+  const setStatus = (i: number, status: DocStatus, error?: string) =>
+    setDocEntries(prev => prev.map((d, idx) => idx === i ? { ...d, status, error } : d));
+
+  try {
+    const documents: { type: string; s3Key: string; fileName: string }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setStatus(i, 'uploading');
+      try {
+        const s3Key = await uploadDocumentToS3(propertyId, file);
+        documents.push({ type: 'legal_document', s3Key, fileName: file.name });
+        setStatus(i, 'done');
+      } catch (err: any) {
+        setStatus(i, 'error', err?.message ?? 'Upload failed');
+      }
+    }
+
+    const successDocs = documents; // only successfully uploaded ones
+    if (successDocs.length > 0) {
+      await saveDocumentsToProperty(propertyId, successDocs);
+    }
+
+    const allOk = files.every((_, i) =>
+      docEntries[i]?.status === 'done' ||
+      initial.filter((_, ii) => ii < i).length === i // re-check via documents array
+    );
+    setDocsComplete(true);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setUploadingDocs(false);
+  }
+};
 
   const isStepValid = () => {
     if (step === 1) return form.title.trim() && form.description.trim();
@@ -132,7 +196,7 @@ export default function AddPropertyPage() {
           <h1 className="text-4xl font-display font-bold text-white mb-2">
             Add New <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary">Property</span>
           </h1>
-          <p className="text-muted">Fill in the details to list your property on LegalNest.</p>
+          <p className="text-muted">Fill in the details to list your property on GharBid.</p>
         </div>
 
         {/* Progress */}
@@ -299,58 +363,187 @@ export default function AddPropertyPage() {
           )}
 
           {/* Step 4: Media & Amenities */}
-          {step === 4 && (
-            <div className="space-y-8">
-              <h2 className="text-xl font-display font-bold">Photos & Amenities</h2>
+{step === 4 && (
+  <div className="space-y-8">
+    <h2 className="text-xl font-display font-bold">
+      Photos & Amenities
+    </h2>
 
-              {/* Image Upload */}
-              <div>
-                <label className={labelClass}>Property Photos</label>
-                <label className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-36 cursor-pointer hover:border-secondary transition-colors ${uploadingImages ? 'opacity-50 pointer-events-none' : ''}`}>
-                  {uploadingImages
-                    ? <><Loader2 size={28} className="text-secondary animate-spin" /><span className="text-muted text-sm">Uploading...</span></>
-                    : <><Upload size={28} className="text-muted" /><span className="text-muted text-sm">Click to upload photos (multiple)</span></>
-                  }
-                  <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </label>
+    {/* Image Upload */}
+    <div>
+      <label className={labelClass}>Property Photos</label>
 
-                {form.images.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    {form.images.map((url, i) => (
-                      <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-dark-border group">
-                        <img src={url} alt="" className="w-full h-full object-cover" />
-                        <button onClick={() => removeImage(i)}
-                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                        >
-                          <X size={18} className="text-red-400" />
-                        </button>
-                        {i === 0 && <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-black font-bold px-1 rounded">Cover</span>}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+      <label
+        className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-36 cursor-pointer hover:border-secondary transition-colors ${
+          uploadingImages
+            ? 'opacity-50 pointer-events-none'
+            : ''
+        }`}
+      >
+        {uploadingImages ? (
+          <>
+            <Loader2
+              size={28}
+              className="text-secondary animate-spin"
+            />
+            <span className="text-muted text-sm">
+              Uploading...
+            </span>
+          </>
+        ) : (
+          <>
+            <Upload
+              size={28}
+              className="text-muted"
+            />
+            <span className="text-muted text-sm">
+              Click to upload photos (multiple)
+            </span>
+          </>
+        )}
 
-              {/* Amenities */}
-              <div>
-                <label className={labelClass}>Amenities</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {AMENITY_OPTIONS.map(a => (
-                    <button key={a} onClick={() => toggleAmenity(a)}
-                      className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                        form.amenities.includes(a)
-                          ? 'bg-secondary/20 border-secondary text-secondary'
-                          : 'border-dark-border text-muted hover:text-white hover:border-white/30'
-                      }`}
-                    >
-                      {form.amenities.includes(a) && <Check size={12} className="inline mr-1" />}
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+      </label>
+
+      {form.images.length > 0 && (
+        <div className="flex flex-wrap gap-3 mt-4">
+          {form.images.map((url, i) => (
+            <div
+              key={i}
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-dark-border group"
+            >
+              <img
+                src={url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+
+              <button
+                onClick={() => removeImage(i)}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+              >
+                <X
+                  size={18}
+                  className="text-red-400"
+                />
+              </button>
+
+              {i === 0 && (
+                <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-black font-bold px-1 rounded">
+                  Cover
+                </span>
+              )}
             </div>
-          )}
+          ))}
+        </div>
+      )}
+    </div>
+
+    {/* Amenities */}
+    <div>
+      <label className={labelClass}>
+        Amenities
+      </label>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {AMENITY_OPTIONS.map((a) => (
+          <button
+            key={a}
+            onClick={() => toggleAmenity(a)}
+            className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+              form.amenities.includes(a)
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'border-dark-border text-muted hover:text-white hover:border-white/30'
+            }`}
+          >
+            {form.amenities.includes(a) && (
+              <Check
+                size={12}
+                className="inline mr-1"
+              />
+            )}
+            {a}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* Legal Documents */}
+    {propertyId && (
+      <div className="mt-8 p-6 border border-dark-border rounded-xl bg-dark-card">
+        <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
+          <FileText size={18} className="text-secondary" />
+          Upload Legal Documents
+        </h3>
+        <p className="text-muted text-sm mb-5">
+          Accepted: PDF, DOCX, JPG, PNG. Upload sale deed, ownership proof, NOC, etc.
+        </p>
+
+        {/* File picker — hidden when uploading */}
+        {!uploadingDocs && !docsComplete && (
+          <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-28 cursor-pointer hover:border-secondary transition-colors">
+            <Upload size={24} className="text-muted" />
+            <span className="text-muted text-sm">Click to select documents (multiple)</span>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+              onChange={handleDocumentUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+
+        {/* Per-file progress list */}
+        {docEntries.length > 0 && (
+          <ul className="mt-5 space-y-3">
+            {docEntries.map((doc, i) => (
+              <li key={i} className="flex items-center gap-3 bg-black/30 rounded-lg px-4 py-3 border border-dark-border">
+                <FileText size={16} className="text-secondary shrink-0" />
+                <span className="flex-1 text-sm text-white truncate">{doc.name}</span>
+                {doc.status === 'pending' && (
+                  <span className="text-xs text-muted">Pending…</span>
+                )}
+                {doc.status === 'uploading' && (
+                  <Loader2 size={16} className="text-secondary animate-spin shrink-0" />
+                )}
+                {doc.status === 'done' && (
+                  <Check size={16} className="text-green-400 shrink-0" />
+                )}
+                {doc.status === 'error' && (
+                  <span className="flex items-center gap-1 text-xs text-red-400">
+                    <AlertCircle size={14} />{doc.error ?? 'Error'}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* All-done banner + navigate */}
+        {docsComplete && (
+          <div className="mt-5 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-green-400 font-bold">
+              <Check size={20} /> All documents uploaded successfully!
+            </div>
+            <button
+              onClick={() => navigate('/seller')}
+              className="px-8 py-3 rounded-lg bg-secondary text-black font-bold hover:bg-teal-400 transition-all"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
 
           {/* Navigation Buttons */}
           <div className="flex justify-between mt-10 pt-6 border-t border-dark-border">

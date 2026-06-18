@@ -3,7 +3,6 @@ import * as PaymentModel from '../models/dynamodb/PaymentModel.js';
 import * as s3Service from '../services/s3Service.js';
 import { generateUUID } from '../utils/helpers.js';
 import { HTTP } from '../utils/constants.js';
-
 // GET /v1/seller/dashboard
 export const getDashboard = async (req, res, next) => {
   try {
@@ -77,44 +76,69 @@ export const getDocumentUploadUrl = async (req, res, next) => {
 
 // PATCH /v1/seller/properties/:id/documents
 // Saves uploaded document S3 keys to the property record
-export const saveDocuments = async (req, res, next) => {
+export const saveDocuments = async (
+  req,
+  res,
+  next
+) => {
   try {
     const sellerId = req.user.userId;
     const { id: propertyId } = req.params;
     const { documents } = req.body;
 
-    if (!Array.isArray(documents) || documents.length === 0) {
-      return res.status(HTTP.BAD_REQUEST).json({
-        success: false,
-        error: { code: 'DOC_001', message: 'documents array is required' },
-      });
-    }
+    const property =
+      await PropertyModel.getProperty(
+        propertyId
+      );
 
-    // Verify property belongs to this seller
-    const property = await PropertyModel.getProperty(propertyId);
     if (!property) {
-      return res.status(HTTP.NOT_FOUND).json({
+      return res.status(
+        HTTP.NOT_FOUND
+      ).json({
         success: false,
-        error: { code: 'PROP_001', message: 'Property not found' },
-      });
-    }
-    if (property.sellerId !== sellerId) {
-      return res.status(HTTP.FORBIDDEN).json({
-        success: false,
-        error: { code: 'AUTH_003', message: 'Access denied' },
+        error: {
+          code: "PROP_001",
+          message: "Property not found",
+        },
       });
     }
 
-    const updated = await PropertyModel.updateProperty(propertyId, {
-      documents: [...(property.documents ?? []), ...documents],
-      updatedAt: new Date().toISOString(),
+    if (
+      property.sellerId !== sellerId
+    ) {
+      return res.status(
+        HTTP.FORBIDDEN
+      ).json({
+        success: false,
+        error: {
+          code: "AUTH_003",
+          message: "Access denied",
+        },
+      });
+    }
+
+    const updated =
+      await PropertyModel.updateProperty(
+        propertyId,
+        {
+          documents: [
+            ...(property.documents ?? []),
+            ...documents,
+          ],
+          updatedAt:
+            new Date().toISOString(),
+        }
+      );
+
+    res.json({
+      success: true,
+      data: updated,
     });
-
-    res.json({ success: true, data: updated });
   } catch (err) {
     next(err);
   }
 };
+
 
 // POST /v1/seller/properties/:id/pay-fee
 // Records a platform fee payment for a property listing
@@ -175,3 +199,15 @@ export const getMyPayments = async (req, res, next) => {
     next(err);
   }
 };
+
+export const getSellerProperties =
+async (req, res) => {
+
+  const properties =
+    await PropertyModel.queryBySeller(
+      req.user.userId
+    );
+
+  res.json(properties);
+};
+

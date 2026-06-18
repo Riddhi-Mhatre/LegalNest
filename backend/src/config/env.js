@@ -30,6 +30,7 @@ const envSchema = z.object({
   // S3
   S3_MEDIA_BUCKET: z.string().default('legalnest-media'),
   S3_DOCUMENTS_BUCKET: z.string().default('legalnest-documents'),
+  S3_UPLOADS_BUCKET: z.string().default('gharbid-property-images'),
 
   // Location
   LOCATION_INDEX_NAME: z.string().default('LegalNestPlaceIndex'),
