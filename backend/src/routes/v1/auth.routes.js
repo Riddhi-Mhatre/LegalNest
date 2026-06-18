@@ -13,5 +13,6 @@ router.post('/otp/verify', authLimiter, validate(otpSchema), authController.veri
 router.post('/refresh', authController.refreshToken);
 router.post('/logout', authController.logout);
 router.post('/verify-email', authController.verifyEmail);
+router.post('/respond-challenge', authLimiter, authController.respondToChallenge);
 
 export default router;

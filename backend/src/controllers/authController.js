@@ -7,7 +7,19 @@ import { HTTP } from '../utils/constants.js';
 // POST /v1/auth/register
 export const register = async (req, res, next) => {
   try {
+    
     const { email, password, phone, name, role } = req.body;
+    const allowedRoles = ['buyer', 'seller'];
+
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: 'AUTH_002',
+        message: 'Invalid role'
+      }
+    });
+  }
     // Sign up in Cognito
     const cognitoUser = await cognitoService.signUp({ email, password, phone, name, role });
     // Create user record in DynamoDB
@@ -37,7 +49,92 @@ export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const tokens = await cognitoService.signIn({ email, password });
-    const user = await UserModel.getUserByEmail(email);
+    
+    // Cognito returned a challenge — forward it to the frontend to handle
+    if (tokens.challenge) {
+      return res.json({
+        success: true,
+        data: {
+          challenge: tokens.challenge,
+          session: tokens.session,
+          email,
+        },
+      });
+    }
+    
+    let user;
+    try {
+      user = await UserModel.getUserByEmail(email);
+    } catch (err) {
+      if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+        user = {
+          userId: generateUUID(),
+          email: email.toLowerCase(),
+          name: 'Platform Admin',
+          role: 'admin',
+          isVerified: true,
+          createdAt: new Date().toISOString()
+        };
+        await UserModel.putUser(user);
+      } else {
+        throw err;
+      }
+    }
+
+    // Always enforce admin role from env
+    if (user.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+      user.role = 'admin';
+    }
+
+    res.json({ success: true, data: { token: tokens?.IdToken, user, cognitoTokens: tokens } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /v1/auth/respond-challenge
+export const respondToChallenge = async (req, res, next) => {
+  try {
+    const { email, newPassword, session } = req.body;
+
+    if (!email || !newPassword || !session) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'AUTH_003', message: 'email, newPassword, and session are required.' },
+      });
+    }
+
+    const tokens = await cognitoService.respondToNewPasswordChallenge({ email, newPassword, session });
+
+    // Ensure the admin user exists in DynamoDB
+    let user;
+    try {
+      user = await UserModel.getUserByEmail(email);
+    } catch {
+      if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+        user = {
+          userId: generateUUID(),
+          email: email.toLowerCase(),
+          name: 'Platform Admin',
+          role: 'admin',
+          isVerified: true,
+          createdAt: new Date().toISOString(),
+        };
+        await UserModel.putUser(user);
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: { code: 'AUTH_004', message: 'User record not found.' },
+        });
+      }
+    }
+
+    // Always enforce admin role from env
+    if (user.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+      user.role = 'admin';
+    }
+
+    logger.info(`Challenge completed for ${email}`);
     res.json({ success: true, data: { token: tokens?.IdToken, user, cognitoTokens: tokens } });
   } catch (err) {
     next(err);

@@ -1,84 +1,43 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { createProperty } from '../services/propertyService';
-import {
-  saveDocumentsToProperty,
-  uploadDocumentToS3,
-  uploadFileToS3,
-  payPlatformFee,
-} from '../services/sellerService';
+import { saveDocumentsToProperty, uploadDocumentToS3, uploadFileToS3 } from '../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
-  Upload, ChevronRight, ChevronLeft, Loader2, X, FileText,
-  AlertCircle, CreditCard, ShieldCheck,
+  Upload, ChevronRight, ChevronLeft, Loader2, X, FileText, AlertCircle
 } from 'lucide-react';
 
-// ─── Document definitions ────────────────────────────────────────────────────
-interface DocDef {
-  key: string;
-  label: string;
-  required: boolean;
-  hint: string;
-}
+type DocStatus = 'pending' | 'uploading' | 'done' | 'error';
+interface DocEntry { name: string; status: DocStatus; error?: string; }
 
-const LEGAL_DOCS: DocDef[] = [
-  { key: 'saleDeed',     label: 'Sale Deed',                     required: true,  hint: 'Original / Certified copy' },
-  { key: 'propertyCard', label: 'Property Card / 7-12 Extract',  required: true,  hint: 'Latest extract' },
-  { key: 'taxReceipt',   label: 'Property Tax Receipt',          required: true,  hint: 'Current year receipt' },
-  { key: 'ownerAadhar',  label: 'Owner Aadhaar Card',            required: true,  hint: 'Front & back scan' },
-  { key: 'ownerPan',     label: 'Owner PAN Card',                required: true,  hint: 'Clear scan' },
-  { key: 'noc',          label: 'NOC (Society / Bank)',           required: false, hint: 'Optional but recommended' },
-];
-
-type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
-interface DocState {
-  status: UploadStatus;
-  fileName?: string;
-  s3Key?: string;
-  error?: string;
-}
-
-type DocMap = Record<string, DocState>;
-
-// ─── Step definitions ────────────────────────────────────────────────────────
-const STEPS = [
-  { id: 1, label: 'Basic Info',        icon: Info },
-  { id: 2, label: 'Pricing',           icon: DollarSign },
-  { id: 3, label: 'Location',          icon: MapPin },
-  { id: 4, label: 'Media & Amenities', icon: Building2 },
-];
 
 const AMENITY_OPTIONS = [
   'Lift', 'Parking', 'Gym', 'Garden',
   'Security', 'Power Backup', 'Swimming Pool', 'Club House',
 ];
 
+const STEPS = [
+  { id: 1, label: 'Basic Info', icon: Info },
+  { id: 2, label: 'Pricing', icon: DollarSign },
+  { id: 3, label: 'Location', icon: MapPin },
+  { id: 4, label: 'Media & Amenities', icon: Building2 },
+];
+
 const inputClass =
   'w-full bg-black border border-dark-border rounded-lg px-4 py-3 text-white placeholder-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary transition-all';
 const labelClass = 'block text-xs text-muted font-bold uppercase tracking-wider mb-2';
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function AddPropertyPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
-
-  // Multi-step state
   const [step, setStep] = useState(1);
-
-  // Property creation
   const [uploadingImages, setUploadingImages] = useState(false);
   const [propertyId, setPropertyId] = useState<string | null>(null);
+  const [uploadingDocs, setUploadingDocs] = useState(false);
+  const [docEntries, setDocEntries] = useState<DocEntry[]>([]);
+  const [docsComplete, setDocsComplete] = useState(false);
 
-  // Documents — one state entry per doc
-  const [docMap, setDocMap] = useState<DocMap>(() =>
-    Object.fromEntries(LEGAL_DOCS.map(d => [d.key, { status: 'idle' as UploadStatus }]))
-  );
 
-  // Payment
-  const [paymentPending, setPaymentPending] = useState(false);
-
-  // Form state
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -108,123 +67,164 @@ export default function AddPropertyPage() {
       form.amenities.includes(a)
         ? form.amenities.filter(x => x !== a)
         : [...form.amenities, a]
+    );  
+
+ const handleImageUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  if (!e.target.files?.length) return;
+
+  setUploadingImages(true);
+
+  try {
+    const files = Array.from(e.target.files);
+
+    
+    const urls = await Promise.all(
+      files.map(uploadFileToS3)
     );
 
-  // ─── Derived state ────────────────────────────────────────────────────────
-  const requiredDocs = LEGAL_DOCS.filter(d => d.required);
-  const allRequiredDone = requiredDocs.every(d => docMap[d.key]?.status === 'done');
-  const anyDocUploading = LEGAL_DOCS.some(d => docMap[d.key]?.status === 'uploading');
+    console.log("Uploaded URLs:", urls); // Debugging
 
-  // ─── Image upload ─────────────────────────────────────────────────────────
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.length) return;
-    setUploadingImages(true);
-    try {
-      const files = Array.from(e.target.files);
-      const urls = await Promise.all(files.map(uploadFileToS3));
-      set('images', [...form.images, ...urls]);
-    } catch (error) {
-      console.error('Image upload error:', error);
-      alert('Image upload failed. Please try again.');
-    } finally {
-      setUploadingImages(false);
-    }
-  };
+    
+    set('images', [...form.images, ...urls]);
+    
+
+  } catch (error) {
+    console.error("Image upload error:", error);
+    alert('Image upload failed. Please try again.');
+  } finally {
+    setUploadingImages(false);
+  }
+};
 
   const removeImage = (idx: number) =>
     set('images', form.images.filter((_, i) => i !== idx));
 
-  // ─── Property submit ──────────────────────────────────────────────────────
   const { mutate: submitProperty, isPending } = useMutation({
-    mutationFn: () =>
-      createProperty({
-        title: form.title,
-        description: form.description,
-        type: form.type,
-        listingType: form.listingType,
-        salePrice: form.salePrice ? Number(form.salePrice) : null,
-        rentPrice: form.rentPrice ? Number(form.rentPrice) : null,
-        securityDeposit: form.securityDeposit ? Number(form.securityDeposit) : null,
-        rentPeriod: form.rentPeriod,
-        bedrooms: Number(form.bedrooms),
-        bathrooms: Number(form.bathrooms),
-        area: Number(form.area),
-        address: form.address,
-        city: form.city,
-        state: form.state,
-        pincode: form.pincode,
-        amenities: form.amenities,
-        images: form.images,
-      }),
-    onSuccess: (data) => {
-      const id = data?.propertyId ?? data?.data?.propertyId;
-      setPropertyId(id ?? null);
-    },
-    onError: () => {
-      alert('Failed to add property. Please try again.');
-    },
-  });
+  mutationFn: () =>
+  createProperty({
+    title: form.title,
+    description: form.description,
+    type: form.type,
+    listingType: form.listingType,
 
-  // ─── Single-document upload ───────────────────────────────────────────────
-  const handleDocUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-    docKey: string
-  ) => {
-    if (!propertyId || !e.target.files?.length) return;
-    const file = e.target.files[0];
+    salePrice: form.salePrice
+      ? Number(form.salePrice)
+      : null,
 
-    // Mark as uploading
-    setDocMap(prev => ({
-      ...prev,
-      [docKey]: { status: 'uploading', fileName: file.name },
-    }));
+    rentPrice: form.rentPrice
+      ? Number(form.rentPrice)
+      : null,
 
-    try {
-      const s3Key = await uploadDocumentToS3(file, docKey);
+    securityDeposit: form.securityDeposit
+      ? Number(form.securityDeposit)
+      : null,
 
-      // Update state to done
-      setDocMap(prev => ({
-        ...prev,
-        [docKey]: { status: 'done', fileName: file.name, s3Key },
-      }));
+    rentPeriod: form.rentPeriod,
 
-      // Save this single doc immediately to DynamoDB
-      await saveDocumentsToProperty(propertyId, { [docKey]: s3Key });
-    } catch (err: any) {
-      setDocMap(prev => ({
-        ...prev,
-        [docKey]: { status: 'error', fileName: file.name, error: err?.message ?? 'Upload failed' },
-      }));
+    bedrooms: Number(form.bedrooms),
+    bathrooms: Number(form.bathrooms),
+    area: Number(form.area),
+
+    address: form.address,
+    city: form.city,
+    state: form.state,
+    pincode: form.pincode,
+
+    amenities: form.amenities,
+    images: form.images,
+  }),
+
+  onSuccess: (data) => {
+
+    // Save property ID returned by backend
+    setPropertyId(data.propertyId);
+
+    alert(
+      "Property created successfully! Now upload legal documents."
+    );
+
+    // Remove this for now:
+    // navigate('/seller');
+  },
+
+  onError: () => {
+    alert(
+      'Failed to add property. Please try again.'
+    );
+  },
+});
+
+  const handleDocumentUpload = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  if (!propertyId || !e.target.files?.length) return;
+
+  const files = Array.from(e.target.files);
+
+  // Initialise entry list shown in UI
+  const initial: DocEntry[] = files.map(f => ({ name: f.name, status: 'pending' }));
+  setDocEntries(initial);
+  setUploadingDocs(true);
+  setDocsComplete(false);
+
+  const setStatus = (i: number, status: DocStatus, error?: string) =>
+    setDocEntries(prev => prev.map((d, idx) => idx === i ? { ...d, status, error } : d));
+
+  try {
+    const documentsRecord: Record<string, string> = {};
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setStatus(i, 'uploading');
+      try {
+        const s3Key = await uploadDocumentToS3(file, `doc_${i}`);
+        documentsRecord[`doc_${i}`] = s3Key;
+        setStatus(i, 'done');
+      } catch (err: any) {
+        setStatus(i, 'error', err?.message ?? 'Upload failed');
+      }
     }
-  };
 
-  // ─── Payment ──────────────────────────────────────────────────────────────
-  const handlePayNow = async () => {
-    if (!propertyId) return;
-    setPaymentPending(true);
-    try {
-      await payPlatformFee(propertyId);
-      // Invalidate cached seller properties so the new one shows immediately
-      await queryClient.invalidateQueries({ queryKey: ['seller', 'properties'] });
-      navigate('/seller/my-properties');
-    } catch (err) {
-      console.error('Payment failed:', err);
-      alert('Payment failed. Please try again.');
-    } finally {
-      setPaymentPending(false);
+    if (Object.keys(documentsRecord).length > 0) {
+      await saveDocumentsToProperty(propertyId, documentsRecord);
     }
-  };
 
-  // ─── Step validation ──────────────────────────────────────────────────────
+    if (Object.keys(documentsRecord).length === files.length) {
+    setDocsComplete(true);
+  }
+
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setUploadingDocs(false);
+  }
+};
+
   const isStepValid = () => {
     if (step === 1) return form.title.trim() && form.description.trim();
     if (step === 2)
-      return form.listingType === 'sale' ? !!form.salePrice : !!form.rentPrice;
+      return form.listingType === 'sale'
+        ? !!form.salePrice
+        : !!form.rentPrice;
     if (step === 3) return form.city.trim() && form.state.trim() && form.address.trim();
     return true;
   };
 
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const handleDemoPayment = async () => {
+  try {
+    alert("Demo payment successful!");
+
+    // Later this will become Razorpay
+
+    navigate("/seller/my-properties");
+  } catch (error) {
+    console.error(error);
+    alert("Payment failed");
+  }
+};
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="max-w-3xl mx-auto">
@@ -237,7 +237,7 @@ export default function AddPropertyPage() {
           <p className="text-muted">Fill in the details to list your property on GharBid.</p>
         </div>
 
-        {/* Progress Steps */}
+        {/* Progress */}
         <div className="flex items-center gap-0 mb-10">
           {STEPS.map((s, i) => (
             <div key={s.id} className="flex items-center flex-1">
@@ -267,7 +267,7 @@ export default function AddPropertyPage() {
         {/* Form Card */}
         <div className="bg-dark-card border border-dark-border rounded-2xl p-8">
 
-          {/* ── Step 1: Basic Info ── */}
+          {/* Step 1: Basic Info */}
           {step === 1 && (
             <div className="space-y-6">
               <h2 className="text-xl font-display font-bold">Basic Information</h2>
@@ -324,7 +324,7 @@ export default function AddPropertyPage() {
             </div>
           )}
 
-          {/* ── Step 2: Pricing ── */}
+          {/* Step 2: Pricing */}
           {step === 2 && (
             <div className="space-y-6">
               <h2 className="text-xl font-display font-bold">Pricing Details</h2>
@@ -372,7 +372,7 @@ export default function AddPropertyPage() {
             </div>
           )}
 
-          {/* ── Step 3: Location ── */}
+          {/* Step 3: Location */}
           {step === 3 && (
             <div className="space-y-6">
               <h2 className="text-xl font-display font-bold">Location</h2>
@@ -400,209 +400,190 @@ export default function AddPropertyPage() {
             </div>
           )}
 
-          {/* ── Step 4: Media, Amenities, Documents & Payment ── */}
-          {step === 4 && (
-            <div className="space-y-8">
-              <h2 className="text-xl font-display font-bold">Photos & Amenities</h2>
+          {/* Step 4: Media & Amenities */}
+{step === 4 && (
+  <div className="space-y-8">
+    <h2 className="text-xl font-display font-bold">
+      Photos & Amenities
+    </h2>
 
-              {/* Image Upload */}
-              <div>
-                <label className={labelClass}>Property Photos</label>
-                <label
-                  className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-36 cursor-pointer hover:border-secondary transition-colors ${uploadingImages ? 'opacity-50 pointer-events-none' : ''}`}
-                >
-                  {uploadingImages ? (
-                    <>
-                      <Loader2 size={28} className="text-secondary animate-spin" />
-                      <span className="text-muted text-sm">Uploading...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload size={28} className="text-muted" />
-                      <span className="text-muted text-sm">Click to upload photos (multiple)</span>
-                    </>
-                  )}
-                  <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
-                </label>
+    {/* Image Upload */}
+    <div>
+      <label className={labelClass}>Property Photos</label>
 
-                {form.images.length > 0 && (
-                  <div className="flex flex-wrap gap-3 mt-4">
-                    {form.images.map((url, i) => (
-                      <div key={i} className="relative w-20 h-20 rounded-lg overflow-hidden border border-dark-border group">
-                        <img src={url} alt="" className="w-full h-full object-cover" />
-                        <button
-                          onClick={() => removeImage(i)}
-                          className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
-                        >
-                          <X size={18} className="text-red-400" />
-                        </button>
-                        {i === 0 && (
-                          <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-black font-bold px-1 rounded">Cover</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+      <label
+        className={`flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-36 cursor-pointer hover:border-secondary transition-colors ${
+          uploadingImages
+            ? 'opacity-50 pointer-events-none'
+            : ''
+        }`}
+      >
+        {uploadingImages ? (
+          <>
+            <Loader2
+              size={28}
+              className="text-secondary animate-spin"
+            />
+            <span className="text-muted text-sm">
+              Uploading...
+            </span>
+          </>
+        ) : (
+          <>
+            <Upload
+              size={28}
+              className="text-muted"
+            />
+            <span className="text-muted text-sm">
+              Click to upload photos (multiple)
+            </span>
+          </>
+        )}
 
-              {/* Amenities */}
-              <div>
-                <label className={labelClass}>Amenities</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {AMENITY_OPTIONS.map(a => (
-                    <button
-                      key={a}
-                      onClick={() => toggleAmenity(a)}
-                      className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
-                        form.amenities.includes(a)
-                          ? 'bg-secondary/20 border-secondary text-secondary'
-                          : 'border-dark-border text-muted hover:text-white hover:border-white/30'
-                      }`}
-                    >
-                      {form.amenities.includes(a) && <Check size={12} className="inline mr-1" />}
-                      {a}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+      </label>
 
-              {/* ── Legal Documents section — only shown after property is created ── */}
-              {propertyId && (
-                <div className="mt-4 p-6 border border-dark-border rounded-xl bg-black/30 space-y-5">
-                  <div className="flex items-center gap-3 mb-2">
-                    <ShieldCheck size={20} className="text-secondary" />
-                    <div>
-                      <h3 className="text-lg font-bold text-white">Legal Documents</h3>
-                      <p className="text-xs text-muted">Upload required documents for verification. Accepted: PDF, JPG, PNG, DOCX.</p>
-                    </div>
-                  </div>
+      {form.images.length > 0 && (
+        <div className="flex flex-wrap gap-3 mt-4">
+          {form.images.map((url, i) => (
+            <div
+              key={i}
+              className="relative w-20 h-20 rounded-lg overflow-hidden border border-dark-border group"
+            >
+              <img
+                src={url}
+                alt=""
+                className="w-full h-full object-cover"
+              />
 
-                  <div className="space-y-3">
-                    {LEGAL_DOCS.map(doc => {
-                      const state = docMap[doc.key];
-                      const isDone = state.status === 'done';
-                      const isUploading = state.status === 'uploading';
-                      const isError = state.status === 'error';
+              <button
+                onClick={() => removeImage(i)}
+                className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity"
+              >
+                <X
+                  size={18}
+                  className="text-red-400"
+                />
+              </button>
 
-                      return (
-                        <div
-                          key={doc.key}
-                          className={`flex items-center gap-4 p-4 rounded-lg border transition-colors ${
-                            isDone
-                              ? 'border-emerald-500/40 bg-emerald-500/5'
-                              : isError
-                              ? 'border-red-500/40 bg-red-500/5'
-                              : 'border-dark-border bg-black/20'
-                          }`}
-                        >
-                          {/* Status icon */}
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                            isDone ? 'bg-emerald-500/20' : isError ? 'bg-red-500/20' : 'bg-dark-border/50'
-                          }`}>
-                            {isDone ? (
-                              <Check size={16} className="text-emerald-400" />
-                            ) : isUploading ? (
-                              <Loader2 size={16} className="text-secondary animate-spin" />
-                            ) : isError ? (
-                              <AlertCircle size={16} className="text-red-400" />
-                            ) : (
-                              <FileText size={16} className="text-muted" />
-                            )}
-                          </div>
-
-                          {/* Label */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-semibold text-white">{doc.label}</span>
-                              {doc.required ? (
-                                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded">Required</span>
-                              ) : (
-                                <span className="text-[10px] font-bold text-muted bg-dark-border/50 px-1.5 py-0.5 rounded">Optional</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted mt-0.5">
-                              {isDone
-                                ? <span className="text-emerald-400">✓ {state.fileName}</span>
-                                : isError
-                                ? <span className="text-red-400">{state.error}</span>
-                                : isUploading
-                                ? <span className="text-secondary">Uploading {state.fileName}…</span>
-                                : doc.hint}
-                            </p>
-                          </div>
-
-                          {/* Upload button */}
-                          {!isUploading && (
-                            <label className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                              isDone
-                                ? 'border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10'
-                                : 'bg-dark-hover border border-dark-border text-muted hover:text-white hover:border-white/30'
-                            }`}>
-                              <Upload size={12} />
-                              {isDone ? 'Replace' : 'Upload'}
-                              <input
-                                type="file"
-                                accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
-                                className="hidden"
-                                onChange={e => handleDocUpload(e, doc.key)}
-                              />
-                            </label>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Progress indicator */}
-                  <div className="flex items-center gap-2 text-xs text-muted">
-                    <span>{requiredDocs.filter(d => docMap[d.key]?.status === 'done').length} / {requiredDocs.length} required documents uploaded</span>
-                    {anyDocUploading && <Loader2 size={12} className="animate-spin text-secondary" />}
-                  </div>
-                </div>
-              )}
-
-              {/* ── Payment Section — only shown when all required docs are done ── */}
-              {propertyId && allRequiredDone && (
-                <div className="mt-2 p-6 border border-secondary/30 rounded-xl bg-secondary/5">
-                  <div className="flex items-center gap-3 mb-4">
-                    <CreditCard size={20} className="text-secondary" />
-                    <h3 className="text-lg font-bold text-white">Listing Payment</h3>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-5">
-                    <div>
-                      <p className="text-sm text-muted">Platform Listing Fee</p>
-                      <p className="text-3xl font-display font-black text-white">₹999</p>
-                      <p className="text-xs text-muted mt-1">One-time fee · Property goes live after admin review</p>
-                    </div>
-                    <div className="flex items-center gap-1 text-emerald-400 text-sm font-bold">
-                      <Check size={16} />
-                      All docs verified
-                    </div>
-                  </div>
-
-                  <button
-                    id="pay-now-btn"
-                    onClick={handlePayNow}
-                    disabled={paymentPending}
-                    className="w-full flex items-center justify-center gap-2 py-4 rounded-lg bg-secondary text-black font-bold text-base hover:bg-teal-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {paymentPending ? (
-                      <><Loader2 size={18} className="animate-spin" /> Processing...</>
-                    ) : (
-                      <><CreditCard size={18} /> Pay Now — ₹999</>
-                    )}
-                  </button>
-
-                  <p className="text-center text-xs text-muted mt-3">
-                    Demo payment · No real money charged
-                  </p>
-                </div>
+              {i === 0 && (
+                <span className="absolute bottom-1 left-1 text-[9px] bg-primary text-black font-bold px-1 rounded">
+                  Cover
+                </span>
               )}
             </div>
-          )}
+          ))}
+        </div>
+      )}
+    </div>
 
-          {/* ── Navigation Buttons ── */}
+    {/* Amenities */}
+    <div>
+      <label className={labelClass}>
+        Amenities
+      </label>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {AMENITY_OPTIONS.map((a) => (
+          <button
+            key={a}
+            onClick={() => toggleAmenity(a)}
+            className={`py-2 px-3 rounded-lg border text-sm font-medium transition-all ${
+              form.amenities.includes(a)
+                ? 'bg-secondary/20 border-secondary text-secondary'
+                : 'border-dark-border text-muted hover:text-white hover:border-white/30'
+            }`}
+          >
+            {form.amenities.includes(a) && (
+              <Check
+                size={12}
+                className="inline mr-1"
+              />
+            )}
+            {a}
+          </button>
+        ))}
+      </div>
+    </div>
+
+    {/* Legal Documents */}
+    {propertyId && (
+      <div className="mt-8 p-6 border border-dark-border rounded-xl bg-dark-card">
+        <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
+          <FileText size={18} className="text-secondary" />
+          Upload Legal Documents
+        </h3>
+        <p className="text-muted text-sm mb-5">
+          Accepted: PDF, DOCX, JPG, PNG. Upload sale deed, ownership proof, NOC, etc.
+        </p>
+
+        {/* File picker — hidden when uploading */}
+        {!uploadingDocs && !docsComplete && (
+          <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-28 cursor-pointer hover:border-secondary transition-colors">
+            <Upload size={24} className="text-muted" />
+            <span className="text-muted text-sm">Click to select documents (multiple)</span>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
+              onChange={handleDocumentUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+
+        {/* Per-file progress list */}
+        {docEntries.length > 0 && (
+          <ul className="mt-5 space-y-3">
+            {docEntries.map((doc, i) => (
+              <li key={i} className="flex items-center gap-3 bg-black/30 rounded-lg px-4 py-3 border border-dark-border">
+                <FileText size={16} className="text-secondary shrink-0" />
+                <span className="flex-1 text-sm text-white truncate">{doc.name}</span>
+                {doc.status === 'pending' && (
+                  <span className="text-xs text-muted">Pending…</span>
+                )}
+                {doc.status === 'uploading' && (
+                  <Loader2 size={16} className="text-secondary animate-spin shrink-0" />
+                )}
+                {doc.status === 'done' && (
+                  <Check size={16} className="text-green-400 shrink-0" />
+                )}
+                {doc.status === 'error' && (
+                  <span className="flex items-center gap-1 text-xs text-red-400">
+                    <AlertCircle size={14} />{doc.error ?? 'Error'}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* All-done banner + navigate */}
+        {docsComplete && (
+          <div className="mt-5 flex flex-col items-center gap-4">
+            <div className="flex items-center gap-2 text-green-400 font-bold">
+              <Check size={20} /> All documents uploaded successfully!
+            </div>
+            <button
+              onClick={handleDemoPayment}
+              className="px-8 py-3 rounded-lg bg-secondary text-black font-bold hover:bg-teal-400 transition-all"
+            >
+              Pay ₹999
+            </button>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
+)}
+
+          {/* Navigation Buttons */}
           <div className="flex justify-between mt-10 pt-6 border-t border-dark-border">
             <button
               onClick={() => setStep(s => s - 1)}
@@ -621,18 +602,16 @@ export default function AddPropertyPage() {
                 Continue <ChevronRight size={18} />
               </button>
             ) : (
-              !propertyId && (
-                <button
-                  onClick={() => submitProperty()}
-                  disabled={isPending}
-                  className="flex items-center gap-2 px-8 py-3 rounded-lg bg-primary text-black font-bold hover:bg-yellow-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {isPending
-                    ? <><Loader2 size={18} className="animate-spin" /> Submitting...</>
-                    : <><Check size={18} /> Submit Listing</>
-                  }
-                </button>
-              )
+              <button
+                onClick={() => submitProperty()}
+                disabled={isPending}
+                className="flex items-center gap-2 px-8 py-3 rounded-lg bg-primary text-black font-bold hover:bg-yellow-400 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {isPending
+                  ? <><Loader2 size={18} className="animate-spin" /> Submitting...</>
+                  : <><Check size={18} /> Submit Listing</>
+                }
+              </button>
             )}
           </div>
         </div>

@@ -3,17 +3,45 @@ import * as authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
+import { ADMIN_EMAIL } from '../utils/constants';
+
 export const useAuth = () => {
   const { user, token, isAuthenticated, login: storeLogin, logout: storeLogout } = useAuthStore();
   const navigate = useNavigate();
 
   const login = async (email: string, password: string, expectedRole?: string) => {
     const data = await authService.login(email, password);
-    if (expectedRole && data.user.role !== expectedRole) {
+
+    // Cognito returned a challenge — surface it to the caller (LoginPage)
+    if (data.challenge) {
+      return data; // { challenge, session, email }
+    }
+    
+    if (data.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      data.user.role = 'admin';
+    } else if (expectedRole && data.user.role !== expectedRole) {
       throw new Error(`You are not registered as a ${expectedRole}.`);
     }
+
     storeLogin(data.user, data.token, data.cognitoTokens?.RefreshToken);
     toast.success(`Welcome back, ${data.user.name}!`);
+    navigate(`/${data.user.role}/dashboard`);
+    return data;
+  };
+
+  /**
+   * Complete the NEW_PASSWORD_REQUIRED challenge returned by Cognito.
+   * Called after the user submits their new permanent password.
+   */
+  const completeChallenge = async (email: string, newPassword: string, session: string) => {
+    const data = await authService.respondToChallenge(email, newPassword, session);
+
+    if (data.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      data.user.role = 'admin';
+    }
+
+    storeLogin(data.user, data.token, data.cognitoTokens?.RefreshToken);
+    toast.success(`Password set! Welcome, ${data.user.name}!`);
     navigate(`/${data.user.role}/dashboard`);
     return data;
   };
@@ -39,5 +67,5 @@ export const useAuth = () => {
     toast.success('Logged out successfully');
   };
 
-  return { user, token, isAuthenticated, login, register, verifyEmail, logout };
+  return { user, token, isAuthenticated, login, completeChallenge, register, verifyEmail, logout };
 };

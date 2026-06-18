@@ -2,6 +2,7 @@ import {
   SignUpCommand,
   ConfirmSignUpCommand,
   InitiateAuthCommand,
+  RespondToAuthChallengeCommand,
   GlobalSignOutCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand,
@@ -32,6 +33,37 @@ export const signIn = async ({ email, password }) => {
     AuthParameters: { USERNAME: email, PASSWORD: password },
   };
   const result = await cognitoClient.send(new InitiateAuthCommand(params));
+  
+  // If Cognito requires a challenge (e.g. first login for admin), pass it back to the controller
+  if (!result.AuthenticationResult) {
+    return {
+      challenge: result.ChallengeName,
+      session: result.Session,
+    };
+  }
+  
+  const role = await getUserRole(email);
+  return { ...result.AuthenticationResult, role };
+};
+
+/**
+ * Complete the NEW_PASSWORD_REQUIRED challenge after first admin login.
+ * Returns full AuthenticationResult with tokens.
+ */
+export const respondToNewPasswordChallenge = async ({ email, newPassword, session }) => {
+  const params = {
+    ChallengeName: 'NEW_PASSWORD_REQUIRED',
+    ClientId: env.COGNITO_CLIENT_ID,
+    ChallengeResponses: {
+      USERNAME: email,
+      NEW_PASSWORD: newPassword,
+    },
+    Session: session,
+  };
+  const result = await cognitoClient.send(new RespondToAuthChallengeCommand(params));
+  if (!result.AuthenticationResult) {
+    throw new Error('Failed to complete the new password challenge. Please try again.');
+  }
   const role = await getUserRole(email);
   return { ...result.AuthenticationResult, role };
 };

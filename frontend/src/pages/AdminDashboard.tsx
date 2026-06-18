@@ -1,42 +1,45 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../services/api';
-import { Users, Building2, Gavel, FileCheck, CheckCircle, XCircle, ShieldCheck, Search, Filter, Eye, AlertTriangle } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import * as adminService from '../services/adminService';
+import {
+  Users, Building2, Gavel, CheckCircle, Search, LayoutDashboard, UserCheck, BarChart3,
+  CreditCard, Bell, Settings as SettingsIcon
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<'properties' | 'users'>('properties');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-  
   const queryClient = useQueryClient();
 
+  // Debugging logs requested by user
+  console.log("AUTH STORE STATE", useAuthStore.getState());
+  console.log("ADMIN EMAIL ENV", import.meta.env.VITE_ADMIN_EMAIL);
+  console.log("CURRENT USER", useAuthStore.getState().user);
+
+  // --- API Queries ---
   const { data: stats } = useQuery({
     queryKey: ['admin', 'stats'],
-    queryFn: () => api.get('/admin/dashboard').then(r => r.data.data),
+    queryFn: adminService.getDashboardStats,
   });
 
-  // To support filtering, we need all properties or at least pending ones. Let's assume we can fetch all or just pending for now.
-  // The backend has /admin/properties/pending. If the user wants to filter, maybe we just filter the pending ones.
-  // Actually, let's just fetch pending properties as the backend currently only exposes /pending.
-  // If we need approved/rejected, we'd need a backend change, but the prompt says "Admin should be able to... Approve property, Reject property... Add Status filters". 
-  // Let's implement local filtering if we had all, but for now we'll stick to pending if the backend only gives pending.
-  // I will add a mock for the status filter assuming we might only have pending for now, or I'll just filter what we get.
-  
+  const { data: users = [] } = useQuery({
+    queryKey: ['admin', 'users'],
+    queryFn: adminService.getUsers,
+    enabled: ['overview', 'users', 'sellers'].includes(activeTab),
+  });
+
   const { data: properties = [], isLoading: loadingProps } = useQuery({
     queryKey: ['admin', 'pending-properties'],
-    queryFn: () => api.get('/admin/properties/pending').then(r => r.data.data),
-    enabled: activeTab === 'properties',
+    queryFn: adminService.getPendingProperties,
+    enabled: ['overview', 'properties'].includes(activeTab),
   });
 
-  const { data: users = [], isLoading: loadingUsers } = useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: () => api.get('/admin/users').then(r => r.data.data),
-    enabled: activeTab === 'users',
-  });
-
+  // --- Mutations ---
   const approveMutation = useMutation({
-    mutationFn: (id: string) => api.put(`/admin/properties/${id}/approve`),
+    mutationFn: (id: string) => adminService.approveProperty(id),
     onSuccess: () => {
       toast.success('Property approved!');
       queryClient.invalidateQueries({ queryKey: ['admin'] });
@@ -45,8 +48,7 @@ export default function AdminDashboard() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      api.put(`/admin/properties/${id}/reject`, { reason }),
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => adminService.rejectProperty(id, reason),
     onSuccess: () => {
       toast.success('Property rejected.');
       queryClient.invalidateQueries({ queryKey: ['admin'] });
@@ -55,7 +57,7 @@ export default function AdminDashboard() {
   });
 
   const verifyUserMutation = useMutation({
-    mutationFn: (userId: string) => api.put(`/admin/users/${userId}/verify`),
+    mutationFn: (userId: string) => adminService.verifyUser(userId),
     onSuccess: () => {
       toast.success('User verified!');
       queryClient.invalidateQueries({ queryKey: ['admin'] });
@@ -63,248 +65,269 @@ export default function AdminDashboard() {
     onError: () => toast.error('Failed to verify user.'),
   });
 
-  const cards = [
-    { label: 'Pending Approvals', value: stats?.pendingProperties ?? 0, icon: Building2, color: 'text-yellow-400' },
-    { label: 'Unverified Users', value: stats?.pendingVerifications ?? 0, icon: Users, color: 'text-primary' },
-    { label: 'Active Auctions', value: stats?.activeAuctions ?? 0, icon: Gavel, color: 'text-secondary' },
-    { label: 'Total Revenue', value: '₹' + (stats?.totalRevenue ?? 0).toLocaleString(), icon: FileCheck, color: 'text-emerald-400' },
+  // --- Computed Data ---
+  const sellersPending = useMemo(() => {
+    return (users || []).filter((u: any) => u.role === 'seller' && !u.isVerified);
+  }, [users]);
+
+  // --- UI Configuration ---
+  const sidebarNav = [
+    { id: 'overview', label: 'Overview', icon: LayoutDashboard },
+    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'sellers', label: 'Seller Verification', icon: UserCheck },
+    { id: 'properties', label: 'Property Approval', icon: Building2 },
+    { id: 'auctions', label: 'Auctions', icon: Gavel },
+    { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
+    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon },
   ];
 
-  const filteredProperties = useMemo(() => {
-    return (properties as any[]).filter(prop => {
-      const matchesSearch = prop.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            prop.sellerId?.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || prop.verificationStatus === statusFilter || prop.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    });
-  }, [properties, searchQuery, statusFilter]);
+  const renderOverview = () => {
+    const summaryCards = [
+      { label: 'Total Users', value: stats?.totalUsers || 0, icon: Users, color: 'text-blue-400' },
+      { label: 'Total Buyers', value: (users || []).filter((u: any) => u.role === 'buyer').length, icon: Users, color: 'text-indigo-400' },
+      { label: 'Total Sellers', value: (users || []).filter((u: any) => u.role === 'seller').length, icon: Users, color: 'text-purple-400' },
+      { label: 'Pending Sellers', value: stats?.pendingVerifications || 0, icon: UserCheck, color: 'text-yellow-400' },
+      { label: 'Pending Properties', value: stats?.pendingProperties || 0, icon: Building2, color: 'text-orange-400' },
+      { label: 'Active Auctions', value: stats?.activeAuctions || 0, icon: Gavel, color: 'text-secondary' },
+      { label: 'Total Revenue', value: '₹' + (stats?.totalRevenue || 0).toLocaleString(), icon: CreditCard, color: 'text-emerald-400' },
+    ];
 
-  return (
-    <div className="min-h-screen text-white bg-dark">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-black to-dark border-b border-dark-border pb-8 pt-12 px-4 md:px-12">
-        <div className="max-w-7xl mx-auto">
-          <p className="text-primary text-xs uppercase font-bold tracking-widest mb-2">Administration</p>
-          <h1 className="text-4xl md:text-5xl font-display font-black tracking-tight mb-2">Admin Portal</h1>
-          <p className="text-muted text-sm max-w-xl">Manage platform verifications, users, and oversee the integrity of the GharBid marketplace.</p>
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-display font-bold">Dashboard Overview</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {summaryCards.map((card, i) => (
+            <div key={i} className="p-5 bg-dark-card border border-dark-border rounded-xl">
+              <div className={`w-10 h-10 rounded-lg bg-black border border-dark-border flex items-center justify-center mb-4 ${card.color}`}>
+                <card.icon size={18} />
+              </div>
+              <p className="text-3xl font-display font-bold mb-1">{card.value}</p>
+              <p className="text-xs text-muted font-bold uppercase tracking-wider">{card.label}</p>
+            </div>
+          ))}
         </div>
       </div>
+    );
+  };
 
-      <div className="max-w-7xl mx-auto px-4 py-12 md:px-12">
-        {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {cards.map((card) => (
-            <div key={card.label} className="bg-dark-card border border-dark-border p-6 rounded-2xl flex items-start gap-4">
-              <div className={`p-3 rounded-xl bg-black border border-dark-border ${card.color}`}>
-                <card.icon size={24} />
+  const renderUsers = () => {
+    const filteredUsers = (users || []).filter((u: any) => u.name?.toLowerCase().includes(searchQuery.toLowerCase()) || u.email?.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-display font-bold">User Management</h2>
+          <div className="relative w-64">
+            <input 
+              type="text" placeholder="Search users..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-black border border-dark-border rounded-lg pl-10 pr-4 py-2 text-sm focus:border-primary outline-none"
+            />
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+          </div>
+        </div>
+        <div className="overflow-x-auto bg-dark-card border border-dark-border rounded-xl">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-black/40 border-b border-dark-border">
+              <tr>
+                <th className="p-4 font-bold text-muted uppercase tracking-wider">User</th>
+                <th className="p-4 font-bold text-muted uppercase tracking-wider">Role</th>
+                <th className="p-4 font-bold text-muted uppercase tracking-wider">Status</th>
+                <th className="p-4 font-bold text-muted uppercase tracking-wider">Joined</th>
+                <th className="p-4 font-bold text-muted uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-dark-border">
+              {filteredUsers.map((u: any) => (
+                <tr key={u.userId} className="hover:bg-white/5">
+                  <td className="p-4">
+                    <div className="font-bold">{u.name}</div>
+                    <div className="text-muted text-xs">{u.email}</div>
+                  </td>
+                  <td className="p-4 capitalize">{u.role}</td>
+                  <td className="p-4">
+                    {u.isVerified ? (
+                      <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] uppercase font-bold tracking-wider">Verified</span>
+                    ) : (
+                      <span className="px-2 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded text-[10px] uppercase font-bold tracking-wider">Pending</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-muted">{new Date(u.createdAt).toLocaleDateString()}</td>
+                  <td className="p-4 text-right">
+                    <button className="text-primary hover:text-white transition-colors font-bold text-xs">View User</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSellers = () => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-display font-bold">Seller Verification</h2>
+      {sellersPending.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-dark-border bg-dark-card rounded-xl">
+          <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500/30" />
+          <p className="text-muted">All sellers verified.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {sellersPending.map((seller: any) => (
+            <div key={seller.userId} className="p-5 bg-dark-card border border-dark-border rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center border border-dark-border font-bold text-lg">{seller.name.charAt(0)}</div>
+                <div>
+                  <h3 className="font-bold">{seller.name}</h3>
+                  <p className="text-xs text-muted">{seller.email}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-3xl font-display font-bold mb-1">{card.value}</p>
-                <p className="text-xs text-muted font-bold uppercase tracking-wider">{card.label}</p>
+              <div className="flex items-center gap-3">
+                <button className="px-4 py-2 border border-dark-border rounded-lg text-sm font-bold hover:bg-dark-hover transition-colors">View Docs</button>
+                <button
+                  onClick={() => verifyUserMutation.mutate(seller.userId)}
+                  disabled={verifyUserMutation.isPending}
+                  className="px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-bold hover:bg-emerald-500/20 transition-colors"
+                >
+                  Verify Seller
+                </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
 
-        {/* Main Content */}
-        <div className="bg-dark-card border border-dark-border rounded-2xl overflow-hidden">
-          {/* Tabs */}
-          <div className="flex border-b border-dark-border bg-black/40">
-            <button
-              onClick={() => setActiveTab('properties')}
-              className={`px-8 py-5 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
-                activeTab === 'properties' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-muted hover:text-white hover:bg-white/5'
-              }`}
-            >
-              Property Approvals
-            </button>
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`px-8 py-5 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${
-                activeTab === 'users' ? 'border-primary text-primary bg-primary/5' : 'border-transparent text-muted hover:text-white hover:bg-white/5'
-              }`}
-            >
-              User Verifications
-            </button>
+  const renderProperties = () => {
+    const filteredProps = (properties || []).filter((p: any) => p.title?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-display font-bold">Property Approvals</h2>
+          <div className="relative w-64">
+            <input 
+              type="text" placeholder="Search properties..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-black border border-dark-border rounded-lg pl-10 pr-4 py-2 text-sm focus:border-primary outline-none"
+            />
+            <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
           </div>
-
-          <div className="p-6 md:p-8">
-            {/* Property Approvals Tab */}
-            {activeTab === 'properties' && (
-              <>
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-                  <div className="relative w-full md:w-96">
-                    <input 
-                      type="text" 
-                      placeholder="Search by title or seller ID..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-black border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm focus:border-primary outline-none transition-all"
-                    />
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
+        </div>
+        {loadingProps ? (
+          <div className="animate-pulse space-y-4">
+            {[1,2,3].map(i => <div key={i} className="h-24 bg-dark-card rounded-xl"></div>)}
+          </div>
+        ) : filteredProps.length === 0 ? (
+          <div className="text-center py-20 border border-dashed border-dark-border bg-dark-card rounded-xl">
+            <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500/30" />
+            <p className="text-muted">No pending properties.</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredProps.map((prop: any) => (
+              <div key={prop.propertyId} className="flex items-center justify-between p-4 bg-dark-card border border-dark-border rounded-xl">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-black rounded-lg overflow-hidden border border-dark-border">
+                    {prop.images?.[0] ? <img src={prop.images[0]} className="w-full h-full object-cover" alt="" /> : <Building2 size={20} className="m-auto mt-4 text-muted" />}
                   </div>
-                  <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Filter size={16} className="text-muted hidden md:block" />
-                    <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as any)}
-                      className="w-full md:w-auto bg-black border border-dark-border rounded-xl px-4 py-3 text-sm focus:border-primary outline-none"
-                    >
-                      <option value="all">All Pending</option>
-                      {/* In a real scenario with full data, we'd have Approved/Rejected here */}
-                    </select>
+                  <div>
+                    <h3 className="font-bold">{prop.title}</h3>
+                    <p className="text-xs text-muted">{prop.city}, {prop.state} • ₹{Number(prop.price || prop.salePrice || 0).toLocaleString()}</p>
                   </div>
                 </div>
-
-                {loadingProps ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-24 bg-dark-border/40 rounded-xl animate-pulse" />)}
-                  </div>
-                ) : filteredProperties.length === 0 ? (
-                  <div className="text-center py-20 border border-dashed border-dark-border bg-black/20 rounded-xl">
-                    <CheckCircle size={48} className="mx-auto mb-4 text-emerald-500/30" />
-                    <p className="text-muted text-lg">You're all caught up!</p>
-                    <p className="text-sm text-muted/60 mt-1">No pending properties need approval right now.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredProperties.map((prop: any) => (
-                      <div
-                        key={prop.propertyId}
-                        className="flex flex-col xl:flex-row xl:items-center justify-between p-5 bg-black/40 border border-dark-border rounded-xl hover:border-primary/50 transition-colors gap-6"
-                      >
-                        <div className="flex items-center gap-5 flex-1 min-w-0">
-                          <div className="w-20 h-20 bg-dark-hover rounded-lg overflow-hidden shrink-0 border border-dark-border">
-                            {prop.images?.[0] ? (
-                              <img src={prop.images[0]} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center"><Building2 size={24} className="text-muted" /></div>
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="font-display font-bold text-lg text-white mb-1 truncate">{prop.title}</h3>
-                            <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-                              <span>{prop.location?.city ?? prop.city ?? '—'}, {prop.location?.state ?? prop.state ?? '—'}</span>
-                              <span className="w-1 h-1 rounded-full bg-dark-border" />
-                              <span className="capitalize">{prop.type}</span>
-                              <span className="w-1 h-1 rounded-full bg-dark-border" />
-                              <span className="capitalize">{prop.listingType}</span>
-                              <span className="w-1 h-1 rounded-full bg-dark-border" />
-                              <span className="font-bold text-primary">₹{Number(prop.salePrice ?? prop.rentPrice ?? prop.price ?? 0).toLocaleString('en-IN')}</span>
-                            </div>
-                            <div className="mt-2 flex items-center gap-2">
-                              {prop.documents && Object.keys(prop.documents).length > 0 ? (
-                                <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                  <FileCheck size={10} /> Docs Uploaded ({Object.keys(prop.documents).length})
-                                </span>
-                              ) : (
-                                <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                                  <AlertTriangle size={10} /> No Docs
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 shrink-0 pt-4 xl:pt-0 border-t border-dark-border xl:border-t-0">
-                          <a
-                            href={`/properties/${prop.propertyId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-dark-hover border border-dark-border rounded-lg text-sm font-bold text-white hover:bg-white/10 transition-colors"
-                          >
-                            <Eye size={16} /> View
-                          </a>
-                          <button
-                            onClick={() => approveMutation.mutate(prop.propertyId)}
-                            disabled={approveMutation.isPending}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-sm font-bold text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
-                          >
-                            <CheckCircle size={16} /> Approve
-                          </button>
-                          <button
-                            onClick={() => {
-                              const reason = window.prompt('Reason for rejection:');
-                              if (reason !== null) rejectMutation.mutate({ id: prop.propertyId, reason });
-                            }}
-                            disabled={rejectMutation.isPending}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 bg-red-500/10 border border-red-500/30 rounded-lg text-sm font-bold text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                          >
-                            <XCircle size={16} /> Reject
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* User Verifications Tab */}
-            {activeTab === 'users' && (
-              <>
-                <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8">
-                  <div className="relative w-full md:w-96">
-                    <input 
-                      type="text" 
-                      placeholder="Search users..."
-                      className="w-full bg-black border border-dark-border rounded-xl pl-10 pr-4 py-3 text-sm focus:border-primary outline-none transition-all"
-                    />
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-muted" />
-                  </div>
+                <div className="flex items-center gap-2">
+                  <a href={`/properties/${prop.propertyId}`} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 border border-dark-border rounded-lg text-xs font-bold hover:bg-dark-hover">View</a>
+                  <button onClick={() => approveMutation.mutate(prop.propertyId)} className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-500/20">Approve</button>
+                  <button onClick={() => { const r = prompt('Reason:'); if (r) rejectMutation.mutate({ id: prop.propertyId, reason: r }) }} className="px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold hover:bg-red-500/20">Reject</button>
                 </div>
-
-                {loadingUsers ? (
-                  <div className="space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-16 bg-dark-border/40 rounded-xl animate-pulse" />)}
-                  </div>
-                ) : (users as any[]).length === 0 ? (
-                  <div className="text-center py-20 border border-dashed border-dark-border bg-black/20 rounded-xl">
-                    <Users size={48} className="mx-auto mb-4 text-muted opacity-30" />
-                    <p className="text-muted text-lg">No users found</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {(users as any[]).map((user: any) => (
-                      <div
-                        key={user.userId}
-                        className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-black/40 border border-dark-border rounded-xl hover:border-primary/30 transition-colors"
-                      >
-                        <div className="flex items-center gap-4 flex-1 min-w-0">
-                          <div className="w-12 h-12 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center font-display font-bold text-lg text-white">
-                            {user.name?.charAt(0) || 'U'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-white text-lg line-clamp-1">{user.name}</p>
-                            <p className="text-sm text-muted line-clamp-1">{user.email} <span className="mx-2">•</span> <span className="capitalize">{user.role}</span></p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 shrink-0">
-                          <span className={`text-[10px] font-bold px-3 py-1 rounded-full border uppercase tracking-wider ${
-                            user.isVerified
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
-                          }`}>
-                            {user.isVerified ? 'Verified' : 'Pending'}
-                          </span>
-                          {!user.isVerified && (
-                            <button
-                              onClick={() => verifyUserMutation.mutate(user.userId)}
-                              disabled={verifyUserMutation.isPending}
-                              className="flex items-center gap-1.5 px-4 py-2 bg-secondary/10 text-secondary border border-secondary/30 rounded-lg text-sm font-bold hover:bg-secondary/20 transition-colors disabled:opacity-50"
-                            >
-                              <ShieldCheck size={16} /> Verify
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+              </div>
+            ))}
           </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderMockSection = (title: string, icon: any) => (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-display font-bold">{title}</h2>
+      <div className="text-center py-20 border border-dashed border-dark-border bg-dark-card rounded-xl">
+        <div className="flex justify-center mb-4 text-muted opacity-50">{icon}</div>
+        <h3 className="text-lg font-bold mb-2">Coming Soon</h3>
+        <p className="text-muted max-w-sm mx-auto text-sm">This section is currently under development and will be available in the next platform update.</p>
+      </div>
+    </div>
+  );
+
+  const renderReports = () => {
+    const data = [
+      { name: 'Jan', users: 400, revenue: 2400 },
+      { name: 'Feb', users: 300, revenue: 1398 },
+      { name: 'Mar', users: 200, revenue: 9800 },
+      { name: 'Apr', users: 278, revenue: 3908 },
+      { name: 'May', users: 189, revenue: 4800 },
+      { name: 'Jun', users: 239, revenue: 3800 },
+    ];
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-display font-bold">Reports & Analytics</h2>
+        <div className="bg-dark-card border border-dark-border rounded-xl p-6 h-96">
+          <h3 className="font-bold mb-4">Platform Growth (Mock Data)</h3>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1A1A1A" vertical={false} />
+              <XAxis dataKey="name" stroke="#666" tick={{fill: '#666', fontSize: 12}} />
+              <YAxis yAxisId="left" stroke="#666" tick={{fill: '#666', fontSize: 12}} />
+              <YAxis yAxisId="right" orientation="right" stroke="#666" tick={{fill: '#666', fontSize: 12}} />
+              <Tooltip contentStyle={{backgroundColor: '#000', borderColor: '#333', borderRadius: '8px'}} />
+              <Line yAxisId="left" type="monotone" dataKey="users" stroke="#00E5FF" strokeWidth={2} />
+              <Line yAxisId="right" type="monotone" dataKey="revenue" stroke="#FFD700" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex bg-black text-white">
+      {/* Sidebar */}
+      <div className="w-64 shrink-0 bg-dark-card border-r border-dark-border flex flex-col h-[calc(100vh-64px)] sticky top-16">
+        <div className="p-4 border-b border-dark-border">
+          <p className="text-xs uppercase font-bold tracking-widest text-primary mb-1">GharBid</p>
+          <h2 className="font-display font-bold">Admin Portal</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto py-4 space-y-1 px-2">
+          {sidebarNav.map(nav => (
+            <button
+              key={nav.id}
+              onClick={() => setActiveTab(nav.id)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors ${
+                activeTab === nav.id ? 'bg-primary/10 text-primary' : 'text-muted hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <nav.icon size={16} /> {nav.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 p-8 overflow-y-auto h-[calc(100vh-64px)] bg-dark">
+        <div className="max-w-6xl mx-auto">
+          {activeTab === 'overview' && renderOverview()}
+          {activeTab === 'users' && renderUsers()}
+          {activeTab === 'sellers' && renderSellers()}
+          {activeTab === 'properties' && renderProperties()}
+          {activeTab === 'auctions' && renderMockSection('Auction Management', <Gavel size={64}/>)}
+          {activeTab === 'reports' && renderReports()}
+          {activeTab === 'payments' && renderMockSection('Payments & Revenue', <CreditCard size={64}/>)}
+          {activeTab === 'notifications' && renderMockSection('Platform Notifications', <Bell size={64}/>)}
+          {activeTab === 'settings' && renderMockSection('Platform Settings', <SettingsIcon size={64}/>)}
         </div>
       </div>
     </div>

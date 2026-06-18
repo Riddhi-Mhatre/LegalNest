@@ -19,3 +19,6 @@ export const refreshToken = (refreshToken: string) =>
   api.post('/auth/refresh', { refreshToken }).then(r => r.data.data);
 
 export const logout = () => api.post('/auth/logout');
+
+export const respondToChallenge = (email: string, newPassword: string, session: string) =>
+  api.post('/auth/respond-challenge', { email, newPassword, session }).then(r => r.data.data);
