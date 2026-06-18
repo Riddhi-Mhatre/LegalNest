@@ -12,7 +12,7 @@ export interface Property {
   amenities: string[];
   images: string[];
   videos: string[];
-  verificationStatus: 'pending' | 'verified' | 'rejected';
+  verificationStatus: 'pending' | 'approved' | 'rejected';
   isAuctionRequested: boolean;
   viewCount: number;
   interestedBuyers: string[];

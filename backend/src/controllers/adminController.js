@@ -66,7 +66,7 @@ export const getPendingProperties = async (req, res, next) => {
 export const approveProperty = async (req, res, next) => {
   try {
     await PropertyModel.updateProperty(req.params.id, {
-      verificationStatus: 'verified',
+      verificationStatus: 'approved',
       status: 'approved',
       verifiedAt: new Date().toISOString(),
     });

@@ -42,7 +42,7 @@ const seedProperties = async () => {
     images: [],
     videos: [],
     documents: [],
-    verificationStatus: 'verified',
+    verificationStatus: 'approved',
     isAuctionRequested: false,
     viewCount: 0,
     interestedBuyers: [],

@@ -14,17 +14,13 @@ export const updateProperty = (propertyId, updates) =>
 export const deleteProperty = (propertyId) =>
   dynamo.deleteItem(TABLE, { propertyId });
 
-export const queryBySeller =
-async (sellerId) => {
-
+export const queryBySeller = async (sellerId) => {
   return dynamo.query({
-    TableName:
-      process.env.DYNAMODB_PROPERTIES_TABLE,
-    IndexName: "sellerId-index",
-    KeyConditionExpression:
-      "sellerId = :sellerId",
+    TableName: TABLE,
+    IndexName: 'sellerId-index',
+    KeyConditionExpression: 'sellerId = :sellerId',
     ExpressionAttributeValues: {
-      ":sellerId": sellerId,
+      ':sellerId': sellerId,
     },
   });
 };

@@ -23,3 +23,10 @@ export const updateUser = (userId, updates) =>
   dynamo.updateItem(TABLE, { userId }, updates);
 
 export const getAllUsers = () => dynamo.scanItems(TABLE);
+
+export const getUsersBatch = async (userIds) => {
+  if (!userIds || !userIds.length) return [];
+  const promises = userIds.map(id => getUser(id));
+  const users = await Promise.all(promises);
+  return users.filter(u => !!u);
+};

@@ -16,13 +16,17 @@ export const getMediaUploadUrl = async (fileName, fileType) => {
 };
 
 export const getDocumentUploadUrl = async (userId, fileName, fileType, docType) => {
-  const key = `documents/${userId}/${docType}/${Date.now()}-${fileName}`;
+  // Sanitize filename — replace spaces and special chars that break S3 key paths
+  const safeFileName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key = `documents/${userId}/${docType}/${Date.now()}-${safeFileName}`;
   const command = new PutObjectCommand({
     Bucket: env.S3_DOCUMENTS_BUCKET,
     Key: key,
-    ContentType: fileType,
+    ContentType: fileType || 'application/octet-stream',
   });
-  return getSignedUrl(s3Client, command, { expiresIn: PRESIGN_EXPIRY });
+  const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: PRESIGN_EXPIRY });
+  // Return both the presigned URL and the key directly (avoid URL parsing issues)
+  return { uploadUrl, s3Key: key };
 };
 
 export const getDocumentReadUrl = async (key) => {

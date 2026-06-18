@@ -29,3 +29,23 @@ export const authenticate = async (req, res, next) => {
     });
   }
 };
+
+export const optionalAuthenticate = async (req, res, next) => {
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  if (!token) {
+    return next();
+  }
+  try {
+    const decoded = await verifyJwt(token);
+    if (!decoded.email || typeof decoded.email !== 'string') {
+      return next();
+    }
+    const user = await getUserByEmail(decoded.email);
+    if (user) {
+      req.user = { userId: user.userId, email: user.email, role: user.role };
+    }
+  } catch (err) {
+    // ignore verification errors for optional auth
+  }
+  next();
+};

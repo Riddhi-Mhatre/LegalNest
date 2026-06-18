@@ -10,7 +10,7 @@ interface PropertyCardProps {
 }
 
 export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
-  const isVerified = property.verificationStatus === 'verified';
+  const isVerified = property.verificationStatus === 'approved';
 
   return (
     <Link

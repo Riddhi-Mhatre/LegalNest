@@ -89,8 +89,8 @@ export default function DocumentUploadPage() {
     setUploadState(docKey, { status: 'uploading', error: undefined });
 
     try {
-      const { s3Key, fileName } = await uploadDocumentToS3(file, docKey);
-      setUploadState(docKey, { status: 'done', s3Key, fileName });
+      const s3Key = await uploadDocumentToS3(file, docKey);
+      setUploadState(docKey, { status: 'done', s3Key, fileName: file.name });
     } catch (err: any) {
       setUploadState(docKey, {
         status: 'error',
@@ -115,10 +115,13 @@ export default function DocumentUploadPage() {
     try {
       if (propertyId) {
         // Collect all uploaded s3Keys and persist to property record
-        const s3Keys = Object.values(uploads)
-          .filter(u => u.status === 'done' && u.s3Key)
-          .map(u => u.s3Key as string);
-        await saveDocumentsToProperty(propertyId, s3Keys);
+        const documentKeys: Record<string, string> = {};
+        for (const [key, val] of Object.entries(uploads)) {
+          if (val.status === 'done' && val.s3Key) {
+            documentKeys[key] = val.s3Key;
+          }
+        }
+        await saveDocumentsToProperty(propertyId, documentKeys);
         toast.success('Documents submitted for admin review!');
       } else {
         // No propertyId in URL — documents uploaded to S3 but no property to attach to

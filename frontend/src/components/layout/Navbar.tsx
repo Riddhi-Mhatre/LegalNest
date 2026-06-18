@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../utils/constants';
-import { Bell, Home, LogOut, User } from 'lucide-react';
+import { Bell, Home, LogOut, User, Gavel } from 'lucide-react';
 import { useState } from 'react';
 
 export const Navbar = () => {
@@ -61,6 +61,11 @@ export const Navbar = () => {
                       <Link to={`/${user.role}/dashboard`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-dashboard">
                         <Home size={14} /> Dashboard
                       </Link>
+                      {user.role === 'seller' && (
+                        <Link to={`/seller/auctions`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-seller-auctions">
+                          <Gavel size={14} /> Auctions
+                        </Link>
+                      )}
                       <hr className="border-dark-border my-1" />
                       <button onClick={handleLogout} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-dark-hover transition-colors" id="nav-logout">
                         <LogOut size={14} /> Logout

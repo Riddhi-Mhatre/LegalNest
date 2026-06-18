@@ -21,3 +21,8 @@ export const getAuctionsByStatus = (status) =>
   });
 
 export const getActiveAuctions = () => getAuctionsByStatus('live');
+
+export const getAuctionsBySeller = async (sellerId) => {
+  const all = await dynamo.scanItems(TABLE);
+  return all.filter(a => a.sellerId === sellerId);
+};

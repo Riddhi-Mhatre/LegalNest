@@ -10,7 +10,7 @@ import { env } from '../config/env.js';
 // GET /v1/properties
 export const listProperties = async (req, res, next) => {
   try {
-    const { type, minPrice, maxPrice, geohash, status = 'verified' } = req.query;
+    const { type, minPrice, maxPrice, geohash, status = 'approved' } = req.query;
     const properties = await PropertyModel.queryProperties({
       type,
       minPrice: minPrice ? Number(minPrice) : undefined,
@@ -37,10 +37,14 @@ export const getProperty = async (req, res, next) => {
 
     // Increment view count (fire-and-forget, don't block response)
     const currentViews = property.viewsCount ?? property.viewCount ?? 0;
-    PropertyModel.updateProperty(req.params.id, {
-      viewsCount: currentViews + 1,
-      viewCount: currentViews + 1,
-    }).catch(() => {/* non-critical */});
+    
+    // Only increment if the viewer is not the seller of this property
+    if (!req.user || req.user.userId !== property.sellerId) {
+      PropertyModel.updateProperty(req.params.id, {
+        viewsCount: currentViews + 1,
+        viewCount: currentViews + 1,
+      }).catch(() => {/* non-critical */});
+    }
 
     res.json({ success: true, data: property });
   } catch (err) {

@@ -28,6 +28,8 @@ const ChatPage = lazy(() => import('./pages/ChatPage'));
 const MembershipPage = lazy(() => import('./pages/MembershipPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const DocumentUploadPage = lazy(() => import('./pages/DocumentUploadPage'));
+const SellerAuctionManagementPage = lazy(() => import('./pages/SellerAuctionManagementPage'));
+const SellerAuctionDashboard = lazy(() => import('./pages/SellerAuctionDashboard'));
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -65,6 +67,8 @@ export default function App() {
                 <Route path="/seller/dashboard" element={<SellerDashboard />} />
                 <Route path="/seller/add-property" element={<AddPropertyPage />} />
                 <Route path="/seller/my-properties" element={<MyPropertiesPage />} />
+                <Route path="/seller/auctions" element={<SellerAuctionDashboard />} />
+                <Route path="/seller/auctions/:id" element={<SellerAuctionManagementPage />} />
                 <Route path="/seller/payments" element={<PaymentsPage />} />
                 <Route path="/seller/documents" element={<DocumentUploadPage />} />
               </Route>

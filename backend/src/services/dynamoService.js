@@ -34,9 +34,12 @@ export const updateItem = async (tableName, key, updates) => {
     values[val] = v;
   });
 
-  values[':updatedAt'] = new Date().toISOString();
-  expressions.push('#updatedAt = :updatedAt');
-  names['#updatedAt'] = 'updatedAt';
+  // Only auto-add updatedAt if the caller didn't already include it
+  if (!Object.prototype.hasOwnProperty.call(updates, 'updatedAt')) {
+    values[':updatedAt'] = new Date().toISOString();
+    expressions.push('#updatedAt = :updatedAt');
+    names['#updatedAt'] = 'updatedAt';
+  }
 
   const result = await dynamoClient.send(
     new UpdateCommand({
@@ -69,6 +72,12 @@ export const queryItems = async (params) => {
       Limit: params.limit,
     })
   );
+  return result.Items ?? [];
+};
+
+// Raw query — accepts a full DynamoDB QueryCommand params object
+export const query = async (params) => {
+  const result = await dynamoClient.send(new QueryCommand(params));
   return result.Items ?? [];
 };
 

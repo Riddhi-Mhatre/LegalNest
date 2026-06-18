@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as propertyController from '../../controllers/propertyController.js';
-import { authenticate } from '../../middleware/auth.js';
+import { authenticate, optionalAuthenticate } from '../../middleware/auth.js';
 import { requireRole } from '../../middleware/rbac.js';
 import { generalLimiter } from '../../middleware/rateLimit.js';
 import {
@@ -15,7 +15,7 @@ router.post('/upload-url', authenticate, requireRole(['seller']), propertyContro
 
 // ─── Public routes ──────────────────────────────────────────────────────────
 router.get('/', generalLimiter, propertyController.listProperties);
-router.get('/:id', generalLimiter, propertyController.getProperty);
+router.get('/:id', generalLimiter, optionalAuthenticate, propertyController.getProperty);
 
 // ─── Seller routes ──────────────────────────────────────────────────────────
 router.post('/', authenticate, requireRole(['seller']), propertyController.createProperty);

@@ -14,7 +14,7 @@ export const getDashboard = async (req, res, next) => {
       p => p.verificationStatus === 'pending' || p.status === 'pending'
     ).length;
     const approved = properties.filter(
-      p => p.verificationStatus === 'verified' || p.status === 'approved'
+      p => p.verificationStatus === 'approved' || p.status === 'approved'
     ).length;
     const rejected = properties.filter(
       p => p.verificationStatus === 'rejected' || p.status === 'rejected'
@@ -64,18 +64,18 @@ export const getDocumentUploadUrl = async (req, res, next) => {
       });
     }
 
-    const url = await s3Service.getDocumentUploadUrl(sellerId, fileName, fileType, docType);
-    // S3 key is embedded in the URL path before the query string
-    const s3Key = new URL(url).pathname.slice(1); // remove leading /
+    // s3Service now returns { uploadUrl, s3Key } directly
+    const { uploadUrl, s3Key } = await s3Service.getDocumentUploadUrl(sellerId, fileName, fileType, docType);
 
-    res.json({ success: true, data: { uploadUrl: url, s3Key } });
+    res.json({ success: true, data: { uploadUrl, s3Key } });
   } catch (err) {
+    console.error('[getDocumentUploadUrl] ERROR:', err?.name, '-', err?.message);
     next(err);
   }
 };
 
 // PATCH /v1/seller/properties/:id/documents
-// Saves uploaded document S3 keys to the property record
+// Saves uploaded document S3 keys to the property record as a named-key object
 export const saveDocuments = async (
   req,
   res,
@@ -84,56 +84,38 @@ export const saveDocuments = async (
   try {
     const sellerId = req.user.userId;
     const { id: propertyId } = req.params;
+    // documents: { saleDeed, propertyCard, taxReceipt, ownerAadhar, ownerPan, noc }
     const { documents } = req.body;
 
-    const property =
-      await PropertyModel.getProperty(
-        propertyId
-      );
+    const property = await PropertyModel.getProperty(propertyId);
 
     if (!property) {
-      return res.status(
-        HTTP.NOT_FOUND
-      ).json({
+      return res.status(HTTP.NOT_FOUND).json({
         success: false,
-        error: {
-          code: "PROP_001",
-          message: "Property not found",
-        },
+        error: { code: 'PROP_001', message: 'Property not found' },
       });
     }
 
-    if (
-      property.sellerId !== sellerId
-    ) {
-      return res.status(
-        HTTP.FORBIDDEN
-      ).json({
+    if (property.sellerId !== sellerId) {
+      return res.status(HTTP.FORBIDDEN).json({
         success: false,
-        error: {
-          code: "AUTH_003",
-          message: "Access denied",
-        },
+        error: { code: 'AUTH_003', message: 'Access denied' },
       });
     }
 
-    const updated =
-      await PropertyModel.updateProperty(
-        propertyId,
-        {
-          documents: [
-            ...(property.documents ?? []),
-            ...documents,
-          ],
-          updatedAt:
-            new Date().toISOString(),
-        }
-      );
+    // Merge incoming documents with any previously saved ones (object format)
+    const existingDocs = Array.isArray(property.documents)
+      ? {} // discard old array format
+      : (property.documents ?? {});
 
-    res.json({
-      success: true,
-      data: updated,
+    const mergedDocuments = { ...existingDocs, ...documents };
+
+    const updated = await PropertyModel.updateProperty(propertyId, {
+      documents: mergedDocuments,
+      updatedAt: new Date().toISOString(),
     });
+
+    res.json({ success: true, data: updated });
   } catch (err) {
     next(err);
   }
@@ -200,14 +182,4 @@ export const getMyPayments = async (req, res, next) => {
   }
 };
 
-export const getSellerProperties =
-async (req, res) => {
-
-  const properties =
-    await PropertyModel.queryBySeller(
-      req.user.userId
-    );
-
-  res.json(properties);
-};
 
