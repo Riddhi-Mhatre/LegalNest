@@ -26,6 +26,10 @@ const envSchema = z.object({
   DYNAMODB_MESSAGES_TABLE: z.string().default('LegalNest-Messages'),
   DYNAMODB_NOTIFICATIONS_TABLE: z.string().default('LegalNest-Notifications'),
   DYNAMODB_PAYMENTS_TABLE: z.string().default('LegalNest-Payments'),
+  DYNAMODB_SAVED_PROPERTIES_TABLE: z.string().default('LegalNest-SavedProperties'),
+  DYNAMODB_VISITS_TABLE: z.string().default('LegalNest-Visits'),
+  DYNAMODB_PURCHASES_TABLE: z.string().default('LegalNest-Purchases'),
+  DYNAMODB_MEMBERSHIPS_TABLE: z.string().default('LegalNest-Memberships'),
 
   // S3
   S3_MEDIA_BUCKET: z.string().default('legalnest-media'),

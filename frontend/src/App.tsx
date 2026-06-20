@@ -31,6 +31,16 @@ const DocumentUploadPage = lazy(() => import('./pages/DocumentUploadPage'));
 const SellerAuctionManagementPage = lazy(() => import('./pages/SellerAuctionManagementPage'));
 const SellerAuctionDashboard = lazy(() => import('./pages/SellerAuctionDashboard'));
 
+const BuyerAuctionsPage = lazy(() => import('./pages/BuyerAuctionsPage'));
+const BuyerBidsPage = lazy(() => import('./pages/BuyerBidsPage'));
+const BuyerSavedPage = lazy(() => import('./pages/BuyerSavedPage'));
+const BuyerVisitsPage = lazy(() => import('./pages/BuyerVisitsPage'));
+const BuyerLegalDocumentsPage = lazy(() => import('./pages/BuyerLegalDocumentsPage'));
+const BuyerPurchasesPage = lazy(() => import('./pages/BuyerPurchasesPage'));
+const BuyerMembershipPage = lazy(() => import('./pages/BuyerMembershipPage'));
+const BuyerProfilePage = lazy(() => import('./pages/BuyerProfilePage'));
+import { BuyerLayout } from './components/layout/BuyerLayout';
+
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
 
@@ -58,7 +68,17 @@ export default function App() {
 
               {/* Protected – Buyer */}
               <Route element={<PrivateRoute allowedRoles={['buyer']} />}>
-                <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
+                <Route element={<BuyerLayout />}>
+                  <Route path="/buyer/dashboard" element={<BuyerDashboard />} />
+                  <Route path="/buyer/auctions" element={<BuyerAuctionsPage />} />
+                  <Route path="/buyer/bids" element={<BuyerBidsPage />} />
+                  <Route path="/buyer/saved" element={<BuyerSavedPage />} />
+                  <Route path="/buyer/visits" element={<BuyerVisitsPage />} />
+                  <Route path="/buyer/legal-documents" element={<BuyerLegalDocumentsPage />} />
+                  <Route path="/buyer/purchases" element={<BuyerPurchasesPage />} />
+                  <Route path="/buyer/membership" element={<BuyerMembershipPage />} />
+                  <Route path="/buyer/profile" element={<BuyerProfilePage />} />
+                </Route>
               </Route>
 
               {/* Protected – Seller */}

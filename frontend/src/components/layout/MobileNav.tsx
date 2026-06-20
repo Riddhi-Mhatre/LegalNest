@@ -16,7 +16,7 @@ export const MobileNav = () => {
   const { isAuthenticated } = useAuthStore();
   const isMobile = useIsMobile();
 
-  if (!isMobile) return null;
+  if (!isMobile || location.pathname.startsWith('/buyer')) return null;
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-dark-card border-t border-dark-border safe-area-inset-bottom">

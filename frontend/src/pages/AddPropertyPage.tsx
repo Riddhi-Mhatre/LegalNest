@@ -2,14 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createProperty } from '../services/propertyService';
-import { saveDocumentsToProperty, uploadDocumentToS3, uploadFileToS3 } from '../services/sellerService';
+import { uploadFileToS3 } from '../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
-  Upload, ChevronRight, ChevronLeft, Loader2, X, FileText, AlertCircle
+  Upload, ChevronRight, ChevronLeft, Loader2, X
 } from 'lucide-react';
-
-type DocStatus = 'pending' | 'uploading' | 'done' | 'error';
-interface DocEntry { name: string; status: DocStatus; error?: string; }
 
 
 const AMENITY_OPTIONS = [
@@ -32,10 +29,6 @@ export default function AddPropertyPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [uploadingImages, setUploadingImages] = useState(false);
-  const [propertyId, setPropertyId] = useState<string | null>(null);
-  const [uploadingDocs, setUploadingDocs] = useState(false);
-  const [docEntries, setDocEntries] = useState<DocEntry[]>([]);
-  const [docsComplete, setDocsComplete] = useState(false);
 
 
   const [form, setForm] = useState({
@@ -137,70 +130,14 @@ export default function AddPropertyPage() {
   }),
 
   onSuccess: (data) => {
-
-    // Save property ID returned by backend
-    setPropertyId(data.propertyId);
-
-    alert(
-      "Property created successfully! Now upload legal documents."
-    );
-
-    // Remove this for now:
-    // navigate('/seller');
+    // Redirect to the dedicated document upload page with the new property ID
+    navigate(`/seller/documents?propertyId=${data.propertyId}`);
   },
 
   onError: () => {
-    alert(
-      'Failed to add property. Please try again.'
-    );
+    alert('Failed to add property. Please try again.');
   },
 });
-
-  const handleDocumentUpload = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  if (!propertyId || !e.target.files?.length) return;
-
-  const files = Array.from(e.target.files);
-
-  // Initialise entry list shown in UI
-  const initial: DocEntry[] = files.map(f => ({ name: f.name, status: 'pending' }));
-  setDocEntries(initial);
-  setUploadingDocs(true);
-  setDocsComplete(false);
-
-  const setStatus = (i: number, status: DocStatus, error?: string) =>
-    setDocEntries(prev => prev.map((d, idx) => idx === i ? { ...d, status, error } : d));
-
-  try {
-    const documentsRecord: Record<string, string> = {};
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      setStatus(i, 'uploading');
-      try {
-        const s3Key = await uploadDocumentToS3(file, `doc_${i}`);
-        documentsRecord[`doc_${i}`] = s3Key;
-        setStatus(i, 'done');
-      } catch (err: any) {
-        setStatus(i, 'error', err?.message ?? 'Upload failed');
-      }
-    }
-
-    if (Object.keys(documentsRecord).length > 0) {
-      await saveDocumentsToProperty(propertyId, documentsRecord);
-    }
-
-    if (Object.keys(documentsRecord).length === files.length) {
-    setDocsComplete(true);
-  }
-
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setUploadingDocs(false);
-  }
-};
 
   const isStepValid = () => {
     if (step === 1) return form.title.trim() && form.description.trim();
@@ -212,18 +149,6 @@ export default function AddPropertyPage() {
     return true;
   };
 
-  const handleDemoPayment = async () => {
-  try {
-    alert("Demo payment successful!");
-
-    // Later this will become Razorpay
-
-    navigate("/seller/my-properties");
-  } catch (error) {
-    console.error(error);
-    alert("Payment failed");
-  }
-};
 
   return (
     <div className="min-h-screen py-12 px-4">
@@ -512,74 +437,6 @@ export default function AddPropertyPage() {
       </div>
     </div>
 
-    {/* Legal Documents */}
-    {propertyId && (
-      <div className="mt-8 p-6 border border-dark-border rounded-xl bg-dark-card">
-        <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-          <FileText size={18} className="text-secondary" />
-          Upload Legal Documents
-        </h3>
-        <p className="text-muted text-sm mb-5">
-          Accepted: PDF, DOCX, JPG, PNG. Upload sale deed, ownership proof, NOC, etc.
-        </p>
-
-        {/* File picker — hidden when uploading */}
-        {!uploadingDocs && !docsComplete && (
-          <label className="flex flex-col items-center justify-center gap-3 border-2 border-dashed border-dark-border rounded-xl h-28 cursor-pointer hover:border-secondary transition-colors">
-            <Upload size={24} className="text-muted" />
-            <span className="text-muted text-sm">Click to select documents (multiple)</span>
-            <input
-              type="file"
-              multiple
-              accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
-              onChange={handleDocumentUpload}
-              className="hidden"
-            />
-          </label>
-        )}
-
-        {/* Per-file progress list */}
-        {docEntries.length > 0 && (
-          <ul className="mt-5 space-y-3">
-            {docEntries.map((doc, i) => (
-              <li key={i} className="flex items-center gap-3 bg-black/30 rounded-lg px-4 py-3 border border-dark-border">
-                <FileText size={16} className="text-secondary shrink-0" />
-                <span className="flex-1 text-sm text-white truncate">{doc.name}</span>
-                {doc.status === 'pending' && (
-                  <span className="text-xs text-muted">Pending…</span>
-                )}
-                {doc.status === 'uploading' && (
-                  <Loader2 size={16} className="text-secondary animate-spin shrink-0" />
-                )}
-                {doc.status === 'done' && (
-                  <Check size={16} className="text-green-400 shrink-0" />
-                )}
-                {doc.status === 'error' && (
-                  <span className="flex items-center gap-1 text-xs text-red-400">
-                    <AlertCircle size={14} />{doc.error ?? 'Error'}
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* All-done banner + navigate */}
-        {docsComplete && (
-          <div className="mt-5 flex flex-col items-center gap-4">
-            <div className="flex items-center gap-2 text-green-400 font-bold">
-              <Check size={20} /> All documents uploaded successfully!
-            </div>
-            <button
-              onClick={handleDemoPayment}
-              className="px-8 py-3 rounded-lg bg-secondary text-black font-bold hover:bg-teal-400 transition-all"
-            >
-              Pay ₹999
-            </button>
-          </div>
-        )}
-      </div>
-    )}
   </div>
 )}
 

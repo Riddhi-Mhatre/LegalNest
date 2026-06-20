@@ -1,12 +1,13 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../utils/constants';
-import { Bell, Home, LogOut, User, Gavel, ShieldCheck } from 'lucide-react';
+import { Bell, Home, LogOut, User, Gavel, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 export const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -14,17 +15,32 @@ export const Navbar = () => {
     navigate(ROUTES.HOME);
   };
 
+  if (location.pathname.startsWith('/buyer')) {
+    return null;
+  }
+
   return (
     <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-card/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link to={ROUTES.HOME} className="flex items-center gap-2 group" id="nav-logo">
-            <span className="text-xl font-display font-bold text-gradient-gold group-hover:opacity-90 transition-opacity animate-brand-intro inline-block origin-left">
-              GharBid
-            </span>
-            <span className="text-xs text-muted hidden sm:block">Trusted Real Estate</span>
-          </Link>
+          {/* Back Arrow & Logo */}
+          <div className="flex items-center gap-3">
+            {location.pathname !== '/' && (
+              <button 
+                onClick={() => navigate(-1)} 
+                className="p-1.5 rounded-full hover:bg-white/10 text-muted hover:text-white transition-all flex items-center justify-center"
+                aria-label="Go Back"
+              >
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <Link to={ROUTES.HOME} className="flex items-center gap-2 group" id="nav-logo">
+              <span className="text-xl font-display font-bold text-gradient-gold group-hover:opacity-90 transition-opacity animate-brand-intro inline-block origin-left">
+                GharBid
+              </span>
+              <span className="text-xs text-muted hidden sm:block">Trusted Real Estate</span>
+            </Link>
+          </div>
 
           {/* Desktop Nav Links */}
           <div className="hidden md:flex items-center gap-1">

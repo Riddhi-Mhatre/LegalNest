@@ -1,7 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
-export const Footer = () => (
-  <footer className="border-t border-dark-border bg-dark-card mt-auto hidden md:block">
+export const Footer = () => {
+  const location = useLocation();
+  if (location.pathname.startsWith('/buyer')) return null;
+
+  return (
+    <footer className="border-t border-dark-border bg-dark-card mt-auto hidden md:block">
     <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 md:grid-cols-4 gap-8">
       <div>
         <h3 className="font-display font-bold text-gradient-gold text-lg mb-3">GharBid</h3>
@@ -36,4 +40,5 @@ export const Footer = () => (
       © {new Date().getFullYear()} GharBid. All rights reserved.
     </div>
   </footer>
-);
+  );
+};

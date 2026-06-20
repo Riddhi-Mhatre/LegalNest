@@ -17,13 +17,5 @@ router.put('/properties/:id/approve', adminController.approveProperty);
 router.put('/properties/:id/reject', adminController.rejectProperty);
 router.post('/auctions', adminController.scheduleAuction);
 router.put('/interests/:interestId/approve', adminController.approveInterest);
-import { requireAdmin } from '../../middleware/requireAdmin.js';
-
-router.get(
-  '/dashboard',
-  authenticate,
-  requireAdmin,
-  getDashboard
-);
 
 export default router;
