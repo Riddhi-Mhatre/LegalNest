@@ -24,13 +24,11 @@ export default function RegisterPage() {
   const roleColorClasses = {
     buyer: 'border-2 border-primary shadow-[0_0_40px_rgba(255,215,0,0.3)]',
     seller: 'border-2 border-secondary shadow-[0_0_40px_rgba(0,128,128,0.4)]',
-    admin: 'border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.4)]',
   };
 
   const inputClasses = {
     buyer: 'border-primary/30 focus:border-primary focus:ring-primary shadow-[0_0_10px_rgba(255,215,0,0.1)]',
     seller: 'border-secondary/30 focus:border-secondary focus:ring-secondary shadow-[0_0_10px_rgba(0,128,128,0.1)]',
-    admin: 'border-red-500/30 focus:border-red-500 focus:ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]',
   };
 
   const onSubmit = async (data: RegisterFormData) => {

@@ -142,6 +142,7 @@ export const getBuyerBidsEnriched = async (buyerId) => {
         timestamp: bid.timestamp,
         propertyId: auction.propertyId,
         propertyName: property?.title ?? 'Unknown',
+        image: property?.images?.[0] ?? '',
         currentHighestBid: auction.currentHighestBid ?? 0,
         myBid: bid.amount,
         auctionStatus: auction.status,

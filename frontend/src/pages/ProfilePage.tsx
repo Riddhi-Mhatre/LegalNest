@@ -1,5 +1,5 @@
 import { useAuthStore } from '../store/authStore';
-import { User, Shield, BadgeCheck, FileText } from 'lucide-react';
+import { User, Shield, BadgeCheck } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 
 export default function ProfilePage() {
@@ -61,16 +61,7 @@ export default function ProfilePage() {
               </div>
             </div>
           </div>
-
-          {user.role === 'seller' && (
-            <div className="card p-6">
-              <h3 className="font-semibold text-lg border-b border-dark-border pb-4 mb-4 flex items-center gap-2">
-                <FileText size={18} /> KYC Documents
-              </h3>
-              <p className="text-sm text-muted mb-4">Upload your identity and business documents for verification.</p>
-              <button className="btn-secondary text-sm">Upload Documents</button>
-            </div>
-          )}
+          
         </div>
       </div>
     </div>

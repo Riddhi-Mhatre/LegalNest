@@ -1,35 +1,44 @@
 import { Heart, Scale, X, Check } from 'lucide-react';
-import { BuyerPropertyCard } from '../components/properties/BuyerPropertyCard';
+import { BuyerPropertyCard } from '../../../components/properties/BuyerPropertyCard';
 import { useState } from 'react';
 
 const savedProperties = [
   {
-    id: '1',
+    propertyId: '1',
     title: 'Modern Glass Villa',
-    location: 'Beverly Hills, CA',
-    price: 4500000,
-    type: 'Villa',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80',
-    isVerified: true
+    city: 'Beverly Hills',
+    state: 'CA',
+    salePrice: 4500000,
+    type: 'villa',
+    listingType: 'sale',
+    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'],
+    isVerified: true,
+    verificationStatus: 'verified',
   },
   {
-    id: '2',
+    propertyId: '2',
     title: 'Luxury Penthouse',
-    location: 'Manhattan, NY',
-    price: 8200000,
-    type: 'Apartment',
-    image: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80',
-    isVerified: true
+    city: 'Manhattan',
+    state: 'NY',
+    salePrice: 8200000,
+    type: 'apartment',
+    listingType: 'sale',
+    images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
+    isVerified: true,
+    verificationStatus: 'verified',
   },
   {
-    id: '3',
+    propertyId: '3',
     title: 'Smart Home Mansion',
-    location: 'Silicon Valley, CA',
-    price: 12500000,
-    type: 'House',
-    image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80',
-    isVerified: false
-  }
+    city: 'Silicon Valley',
+    state: 'CA',
+    salePrice: 12500000,
+    type: 'house',
+    listingType: 'sale',
+    images: ['https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80'],
+    isVerified: false,
+    verificationStatus: 'pending',
+  },
 ];
 
 export default function BuyerSavedPage() {
@@ -66,8 +75,8 @@ export default function BuyerSavedPage() {
               <tr>
                 <th className="p-4 border-b border-dark-border">Features</th>
                 {savedProperties.slice(0, 3).map(p => (
-                  <th key={p.id} className="p-4 border-b border-dark-border font-bold text-white w-1/4">
-                    <img src={p.image} className="w-full h-24 object-cover rounded mb-2" alt={p.title} />
+                  <th key={p.propertyId} className="p-4 border-b border-dark-border font-bold text-white w-1/4">
+                    <img src={p.images?.[0]} className="w-full h-24 object-cover rounded mb-2" alt={p.title} />
                     {p.title}
                   </th>
                 ))}
@@ -76,15 +85,15 @@ export default function BuyerSavedPage() {
             <tbody className="divide-y divide-dark-border">
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Price</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.id} className="p-4 font-display font-bold">${p.price.toLocaleString()}</td>)}
+                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4 font-display font-bold">₹{(p.salePrice ?? p.rentPrice ?? 0).toLocaleString()}</td>)}
               </tr>
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Location</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.id} className="p-4">{p.location}</td>)}
+                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4">{[p.city, p.state].filter(Boolean).join(', ')}</td>)}
               </tr>
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Verified</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.id} className="p-4">{p.isVerified ? <Check size={16} className="text-secondary" /> : <X size={16} className="text-destructive" />}</td>)}
+                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4">{p.isVerified ? <Check size={16} className="text-secondary" /> : <X size={16} className="text-destructive" />}</td>)}
               </tr>
             </tbody>
           </table>

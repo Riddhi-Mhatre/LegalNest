@@ -3,8 +3,6 @@ import * as authService from '../services/authService';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
-import { ADMIN_EMAIL } from '../utils/constants';
-
 export const useAuth = () => {
   const { user, token, isAuthenticated, login: storeLogin, logout: storeLogout } = useAuthStore();
   const navigate = useNavigate();
@@ -16,10 +14,8 @@ export const useAuth = () => {
     if (data.challenge) {
       return data; // { challenge, session, email }
     }
-    
-    if (data.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-      data.user.role = 'admin';
-    } else if (expectedRole && data.user.role !== expectedRole) {
+
+    if (expectedRole && data.user.role !== expectedRole) {
       throw new Error(`You are not registered as a ${expectedRole}.`);
     }
 
@@ -35,10 +31,6 @@ export const useAuth = () => {
    */
   const completeChallenge = async (email: string, newPassword: string, session: string) => {
     const data = await authService.respondToChallenge(email, newPassword, session);
-
-    if (data.user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-      data.user.role = 'admin';
-    }
 
     storeLogin(data.user, data.token, data.cognitoTokens?.RefreshToken);
     toast.success(`Password set! Welcome, ${data.user.name}!`);

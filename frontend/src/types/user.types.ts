@@ -1,4 +1,4 @@
-export type Role = 'buyer' | 'seller' | 'admin';
+export type Role = 'buyer' | 'seller';
 export type MembershipStatus = 'none' | 'active' | 'expired';
 
 export interface User {

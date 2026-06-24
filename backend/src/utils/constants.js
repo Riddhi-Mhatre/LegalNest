@@ -20,7 +20,6 @@ export const AUCTION_CONFIG = {
 export const ROLES = {
   BUYER: 'buyer',
   SELLER: 'seller',
-  ADMIN: 'admin',
 };
 
 export const MEMBERSHIP_PLANS = {

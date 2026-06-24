@@ -1,5 +1,5 @@
-import { Settings, User, MapPin, Bell, Shield } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+﻿import { Settings, User, MapPin, Bell, Shield } from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
 
 export default function BuyerProfilePage() {
   const { user } = useAuthStore();

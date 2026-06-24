@@ -2,8 +2,6 @@ import { verifyJwt } from '../utils/jwt.js';
 import { getUserByEmail } from '../models/dynamodb/UserModel.js';
 import { HTTP } from '../utils/constants.js';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
-
 export const authenticate = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
 
@@ -19,38 +17,17 @@ export const authenticate = async (req, res, next) => {
 
   try {
     const decoded = await verifyJwt(token);
-    console.log("AUTH_MIDDLEWARE DECODED", decoded);
-    console.log("ADMIN_EMAIL ENV VALUE", process.env.ADMIN_EMAIL);
 
     if (!decoded.email || typeof decoded.email !== 'string') {
       throw new Error('Token does not contain an email');
     }
 
-    let user;
-    try {
-      user = await getUserByEmail(decoded.email);
-    } catch (dbErr) {
-      // Handle eventual consistency lag for admin user auto-provisioning
-      if (decoded.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-        user = {
-          userId: 'admin-temp-id',
-          email: decoded.email.toLowerCase(),
-          role: 'admin'
-        };
-      } else {
-        throw dbErr;
-      }
-    }
-
-    const role =
-      user.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()
-        ? 'admin'
-        : user.role;
+    const user = await getUserByEmail(decoded.email);
 
     req.user = {
       userId: user.userId,
       email: user.email,
-      role,
+      role: user.role,
     };
 
     next();

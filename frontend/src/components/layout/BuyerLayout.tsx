@@ -2,13 +2,43 @@ import { Outlet } from 'react-router-dom';
 import { BuyerSidebar } from './BuyerSidebar';
 import { Bell, Search, Menu } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { NotificationPanel } from '../common/NotificationPanel';
+import { useSocket } from '../../hooks/useSocket';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { getNotifications } from '../../services/userService';
 
 export function BuyerLayout() {
   const { user } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const socket = useSocket();
+  const queryClient = useQueryClient();
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: getNotifications,
+  });
+  const hasUnread = notifications.some((n: any) => !n.isRead);
+
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleNotification = (notif: any) => {
+      toast.info(notif.title, {
+        description: notif.body,
+        duration: 5000,
+      });
+      // Invalidate queries to refresh notification panel
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    };
+
+    socket.on('notification', handleNotification);
+    return () => {
+      socket.off('notification', handleNotification);
+    };
+  }, [socket, queryClient]);
 
   return (
     <div className="min-h-screen bg-black flex overflow-hidden">
@@ -50,7 +80,7 @@ export function BuyerLayout() {
                 className="p-2 rounded-full hover:bg-white/10 transition-colors relative group"
               >
                 <Bell size={24} className="text-white group-hover:text-primary transition-colors" />
-                <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-black"></span>
+                {hasUnread && <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-black"></span>}
               </button>
               
               {showNotifications && (

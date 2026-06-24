@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../utils/constants';
-import { Bell, Home, LogOut, User, Gavel, ShieldCheck, ArrowLeft } from 'lucide-react';
+import { Bell, Home, LogOut, User, Gavel, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 export const Navbar = () => {
@@ -74,15 +74,9 @@ export const Navbar = () => {
                       <Link to={ROUTES.PROFILE} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-profile">
                         <User size={14} /> Profile
                       </Link>
-                      {user.role === 'admin' ? (
-                        <Link to="/admin/dashboard" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-admin-dashboard">
-                          <ShieldCheck size={14} /> Admin Dashboard
-                        </Link>
-                      ) : (
-                        <Link to={`/${user.role}/dashboard`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-dashboard">
+                      <Link to={`/${user.role}/dashboard`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-dashboard">
                           <Home size={14} /> Dashboard
                         </Link>
-                      )}
                       {user.role === 'seller' && (
                         <Link to={`/seller/auctions`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-seller-auctions">
                           <Gavel size={14} /> Auctions

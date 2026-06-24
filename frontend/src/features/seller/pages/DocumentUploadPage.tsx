@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { uploadDocumentToS3, saveDocumentsToProperty } from '../services/sellerService';
+import { uploadDocumentToS3, saveDocumentsToProperty } from '../../../services/sellerService';
 import { toast } from 'sonner';
 import {
   FileText, Upload, CheckCircle, XCircle, Loader2,
@@ -122,7 +122,7 @@ export default function DocumentUploadPage() {
           }
         }
         await saveDocumentsToProperty(propertyId, documentKeys);
-        toast.success('Documents submitted for admin review!');
+        toast.success('Documents submitted successfully!');
       } else {
         // No propertyId in URL — documents uploaded to S3 but no property to attach to
         toast.success('Documents uploaded! Attach them to a property from your dashboard.');
@@ -151,8 +151,8 @@ export default function DocumentUploadPage() {
             Upload <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary">Legal Documents</span>
           </h1>
           <p className="text-muted">
-            All documents are stored securely in encrypted S3 storage and reviewed only by our admin team.
-            Your property will be submitted for approval once all required documents are uploaded.
+            All documents are stored securely in encrypted S3 storage.
+            Your property will be published once all required documents are uploaded.
           </p>
         </div>
 
@@ -180,7 +180,7 @@ export default function DocumentUploadPage() {
           <AlertCircle size={18} className="text-yellow-400 shrink-0 mt-0.5" />
           <p className="text-sm text-yellow-200/80">
             Documents marked <span className="font-bold text-yellow-400">Required</span> must be uploaded before submitting.
-            Optional documents improve your listing's credibility and speed up admin approval.
+            Optional documents improve your listing's credibility.
           </p>
         </div>
 
@@ -308,7 +308,7 @@ export default function DocumentUploadPage() {
           >
             {submitting
               ? <><Loader2 size={18} className="animate-spin" /> Submitting for Review...</>
-              : <><ShieldCheck size={18} /> Submit for Admin Review <ArrowRight size={16} /></>
+              : <><ShieldCheck size={18} /> Submit Documents <ArrowRight size={16} /></>
             }
           </button>
         </div>

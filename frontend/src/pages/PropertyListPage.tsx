@@ -13,7 +13,7 @@ export default function PropertyListPage() {
   const filters = useFilterStore();
 
   const queryFilters = useMemo(() => ({
-    status: 'verified',
+    status: 'approved',
     type: filters.propertyType || undefined,
     minPrice: filters.priceRange[0],
     maxPrice: filters.priceRange[1] < 100_000_000 ? filters.priceRange[1] : undefined,

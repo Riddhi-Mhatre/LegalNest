@@ -1,5 +1,5 @@
-import { Calendar } from 'lucide-react';
-import { VisitCard } from '../components/properties/VisitCard';
+﻿import { Calendar } from 'lucide-react';
+import { VisitCard } from '../../../components/properties/VisitCard';
 
 const visits = [
   {

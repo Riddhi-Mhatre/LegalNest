@@ -4,12 +4,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '../utils/validators';
 import { useAuth } from '../hooks/useAuth';
 import { Loader } from '../components/common/Loader';
-import { Eye, EyeOff, Mail, Phone, Shield, User, Building2, X, KeyRound } from 'lucide-react';
-import { ROUTES, ADMIN_EMAIL } from '../utils/constants';
+import { Eye, EyeOff, Mail, Phone, User, Building2, X, KeyRound } from 'lucide-react';
+import { ROUTES } from '../utils/constants';
 
 export default function LoginPage() {
   const [method, setMethod] = useState<'email' | 'phone'>('email');
-  const [role, setRole] = useState<'buyer' | 'seller' | 'admin'>('buyer');
+  const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, completeChallenge } = useAuth();
@@ -23,29 +23,18 @@ export default function LoginPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginFormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
   const roleColorClasses = {
     buyer: 'border-2 border-primary shadow-[0_0_40px_rgba(255,215,0,0.3)]',
     seller: 'border-2 border-secondary shadow-[0_0_40px_rgba(0,128,128,0.4)]',
-    admin: 'border-2 border-red-500 shadow-[0_0_40px_rgba(239,68,68,0.4)]',
   };
 
   const inputClasses = {
     buyer: 'border-primary/30 focus:border-primary focus:ring-primary shadow-[0_0_10px_rgba(255,215,0,0.1)]',
     seller: 'border-secondary/30 focus:border-secondary focus:ring-secondary shadow-[0_0_10px_rgba(0,128,128,0.1)]',
-    admin: 'border-red-500/30 focus:border-red-500 focus:ring-red-500 shadow-[0_0_10px_rgba(239,68,68,0.1)]',
-  };
-
-  const handleRoleChange = (newRole: 'buyer' | 'seller' | 'admin') => {
-    setRole(newRole);
-    if (newRole === 'admin') {
-      setValue('email', ADMIN_EMAIL);
-    } else {
-      setValue('email', '');
-    }
   };
 
   const onSubmit = async (data: LoginFormData) => {
@@ -182,7 +171,7 @@ export default function LoginPage() {
               <div className="flex gap-4">
                 <button
                   type="button"
-                  onClick={() => handleRoleChange('buyer')}
+                  onClick={() => setRole('buyer')}
                   className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
                     role === 'buyer' ? 'bg-primary/10 border-primary text-primary -translate-y-2 shadow-[0_0_20px_rgba(255,215,0,0.4)]' : 'bg-dark-hover border-dark-border text-muted hover:border-primary/50'
                   }`}
@@ -192,7 +181,7 @@ export default function LoginPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleRoleChange('seller')}
+                  onClick={() => setRole('seller')}
                   className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
                     role === 'seller' ? 'bg-secondary/10 border-secondary text-secondary -translate-y-2 shadow-[0_0_20px_rgba(0,128,128,0.4)]' : 'bg-dark-hover border-dark-border text-muted hover:border-secondary/50'
                   }`}
@@ -200,39 +189,27 @@ export default function LoginPage() {
                   <Building2 size={20} />
                   <span className="font-semibold text-xs">Seller</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleRoleChange('admin')}
-                  className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border transition-all duration-300 ${
-                    role === 'admin' ? 'bg-red-500/10 border-red-500 text-red-500 -translate-y-2 shadow-[0_0_20px_rgba(239,68,68,0.4)]' : 'bg-dark-hover border-dark-border text-muted hover:border-red-500/50'
-                  }`}
-                >
-                  <Shield size={20} />
-                  <span className="font-semibold text-xs">Admin</span>
-                </button>
               </div>
 
               {/* Method Tabs */}
-              {role !== 'admin' && (
-                <div className="flex bg-dark-hover rounded-lg p-1 gap-1">
-                  <button
-                    id="login-tab-email"
-                    onClick={() => setMethod('email')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${method === 'email' ? 'bg-primary text-black' : 'text-muted hover:text-white'}`}
-                  >
-                    <Mail size={14} /> Email
-                  </button>
-                  <button
-                    id="login-tab-phone"
-                    onClick={() => setMethod('phone')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${method === 'phone' ? 'bg-primary text-black' : 'text-muted hover:text-white'}`}
-                  >
-                    <Phone size={14} /> Phone OTP
-                  </button>
-                </div>
-              )}
+              <div className="flex bg-dark-hover rounded-lg p-1 gap-1">
+                <button
+                  id="login-tab-email"
+                  onClick={() => setMethod('email')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${method === 'email' ? 'bg-primary text-black' : 'text-muted hover:text-white'}`}
+                >
+                  <Mail size={14} /> Email
+                </button>
+                <button
+                  id="login-tab-phone"
+                  onClick={() => setMethod('phone')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-md text-sm font-medium transition-all ${method === 'phone' ? 'bg-primary text-black' : 'text-muted hover:text-white'}`}
+                >
+                  <Phone size={14} /> Phone OTP
+                </button>
+              </div>
 
-              {method === 'email' || role === 'admin' ? (
+              {method === 'email' ? (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   <div>
                     <label htmlFor="login-email" className="text-xs text-muted mb-1 block">Email</label>

@@ -3,7 +3,8 @@ import { logger } from '../../utils/logger.js';
 
 export const auctionHandler = (socket, io) => {
   // Join auction room
-  socket.on('join_auction', (auctionId) => {
+  socket.on('join_auction', (data) => {
+    const auctionId = typeof data === 'object' && data !== null ? data.auctionId : data;
     socket.join(`auction_${auctionId}`);
     logger.info(`User ${socket.userId} joined auction_${auctionId}`);
     socket.emit('joined_auction', { auctionId });
@@ -21,7 +22,8 @@ export const auctionHandler = (socket, io) => {
   });
 
   // Leave auction room
-  socket.on('leave_auction', (auctionId) => {
+  socket.on('leave_auction', (data) => {
+    const auctionId = typeof data === 'object' && data !== null ? data.auctionId : data;
     socket.leave(`auction_${auctionId}`);
     logger.info(`User ${socket.userId} left auction_${auctionId}`);
   });

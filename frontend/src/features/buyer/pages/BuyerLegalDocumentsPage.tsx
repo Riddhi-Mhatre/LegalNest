@@ -1,4 +1,4 @@
-import { FileText, Download, Eye, ShieldCheck, AlertCircle } from 'lucide-react';
+﻿import { FileText, Download, Eye, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const documents = [
   {

@@ -1,5 +1,5 @@
-import { Home, Download, Phone } from 'lucide-react';
-import { formatShortPrice } from '../utils/formatters';
+﻿import { Home, Download, Phone } from 'lucide-react';
+import { formatShortPrice } from '../../../utils/formatters';
 
 const purchases = [
   {

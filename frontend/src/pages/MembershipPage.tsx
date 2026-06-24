@@ -41,7 +41,7 @@ const PLANS = {
 
 export default function MembershipPage() {
   const { user } = useAuthStore();
-  const [role, setRole] = useState<'buyer' | 'seller'>(user?.role === 'admin' ? 'buyer' : (user?.role || 'buyer'));
+  const [role, setRole] = useState<'buyer' | 'seller'>(user?.role === 'seller' ? 'seller' : 'buyer');
   const [cycle, setCycle] = useState<'monthly' | 'quarterly' | 'annual'>('monthly');
 
   const activePlans = PLANS[role][cycle];

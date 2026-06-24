@@ -16,7 +16,7 @@ export const listProperties = async (req, res, next) => {
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
       geohash,
-      verificationStatus: status,
+      status,
     });
     res.json({ success: true, data: properties });
   } catch (err) {
@@ -62,8 +62,8 @@ export const createProperty = async (req, res, next) => {
       propertyId,
       sellerId,
       ...req.body,
-      verificationStatus: 'pending',
-      status: 'pending',
+      verificationStatus: 'verified',
+      status: 'approved',
       viewsCount: 0,
       viewCount: 0,
       favoriteCount: 0,
@@ -110,7 +110,7 @@ export const expressInterest = async (req, res, next) => {
     const buyerId = req.user.userId;
     const { id: propertyId } = req.params;
     await PropertyModel.addInterest(propertyId, buyerId);
-    res.json({ success: true, data: { message: 'Interest expressed. Pending admin approval.' } });
+    res.json({ success: true, data: { message: 'Interest expressed successfully.' } });
   } catch (err) {
     next(err);
   }

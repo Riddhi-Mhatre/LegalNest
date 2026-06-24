@@ -19,8 +19,8 @@ router.get('/:id', generalLimiter, optionalAuthenticate, propertyController.getP
 
 // ─── Seller routes ──────────────────────────────────────────────────────────
 router.post('/', authenticate, requireRole(['seller']), propertyController.createProperty);
-router.put('/:id', authenticate, requireRole(['seller', 'admin']), propertyController.updateProperty);
-router.delete('/:id', authenticate, requireRole(['seller', 'admin']), propertyController.deleteProperty);
+router.put('/:id', authenticate, requireRole(['seller']), propertyController.updateProperty);
+router.delete('/:id', authenticate, requireRole(['seller']), propertyController.deleteProperty);
 
 // ─── Buyer routes ───────────────────────────────────────────────────────────
 router.post('/:id/interest', authenticate, requireRole(['buyer']), propertyController.expressInterest);

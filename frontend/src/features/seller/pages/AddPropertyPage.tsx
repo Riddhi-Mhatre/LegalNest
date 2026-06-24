@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { createProperty } from '../services/propertyService';
-import { uploadFileToS3 } from '../services/sellerService';
+import { createProperty } from '../../../services/propertyService';
+import { uploadFileToS3 } from '../../../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
   Upload, ChevronRight, ChevronLeft, Loader2, X
@@ -102,22 +102,14 @@ export default function AddPropertyPage() {
     type: form.type,
     listingType: form.listingType,
 
-    salePrice: form.salePrice
-      ? Number(form.salePrice)
-      : null,
-
-    rentPrice: form.rentPrice
-      ? Number(form.rentPrice)
-      : null,
-
-    securityDeposit: form.securityDeposit
-      ? Number(form.securityDeposit)
-      : null,
+    ...(form.salePrice ? { salePrice: Number(form.salePrice) } : {}),
+    ...(form.rentPrice ? { rentPrice: Number(form.rentPrice) } : {}),
+    ...(form.securityDeposit ? { securityDeposit: Number(form.securityDeposit) } : {}),
 
     rentPeriod: form.rentPeriod,
 
-    bedrooms: Number(form.bedrooms),
-    bathrooms: Number(form.bathrooms),
+    bedrooms: (form.type === 'plot' || form.type === 'commercial') ? 0 : Number(form.bedrooms),
+    bathrooms: (form.type === 'plot' || form.type === 'commercial') ? 0 : Number(form.bathrooms),
     area: Number(form.area),
 
     address: form.address,
@@ -232,20 +224,27 @@ export default function AddPropertyPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className={labelClass}>Bedrooms</label>
-                  <input className={inputClass} type="number" min="0" placeholder="0" value={form.bedrooms} onChange={e => set('bedrooms', e.target.value)} />
+              {form.type !== 'plot' && form.type !== 'commercial' ? (
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className={labelClass}>Bedrooms</label>
+                    <input className={inputClass} type="number" min="0" placeholder="0" value={form.bedrooms} onChange={e => set('bedrooms', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Bathrooms</label>
+                    <input className={inputClass} type="number" min="0" placeholder="0" value={form.bathrooms} onChange={e => set('bathrooms', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={labelClass}>Area (sq ft)</label>
+                    <input className={inputClass} type="number" min="0" placeholder="1200" value={form.area} onChange={e => set('area', e.target.value)} />
+                  </div>
                 </div>
-                <div>
-                  <label className={labelClass}>Bathrooms</label>
-                  <input className={inputClass} type="number" min="0" placeholder="0" value={form.bathrooms} onChange={e => set('bathrooms', e.target.value)} />
-                </div>
+              ) : (
                 <div>
                   <label className={labelClass}>Area (sq ft)</label>
                   <input className={inputClass} type="number" min="0" placeholder="1200" value={form.area} onChange={e => set('area', e.target.value)} />
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -291,7 +290,7 @@ export default function AddPropertyPage() {
                   ₹{form.listingType === 'sale' ? '999' : '299'}
                 </p>
                 <p className="text-xs text-muted mt-1">
-                  One-time fee to publish your listing after admin verification.
+                  One-time fee to publish your listing immediately.
                 </p>
               </div>
             </div>

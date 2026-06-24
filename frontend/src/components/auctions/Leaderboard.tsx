@@ -8,8 +8,9 @@ export const Leaderboard = () => {
   // Unique users sorted by highest bid
   const topBidders = Array.from(
     bidHistory.reduce((acc, bid) => {
-      if (!acc.has(bid.userId) || acc.get(bid.userId)! < bid.amount) {
-        acc.set(bid.userId, bid.amount);
+      const uid = bid.userId ?? bid.bidderId ?? '';
+      if (!acc.has(uid) || acc.get(uid)! < bid.amount) {
+        acc.set(uid, bid.amount);
       }
       return acc;
     }, new Map<string, number>())

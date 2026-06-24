@@ -1,6 +1,5 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL;
 export const WS_URL = import.meta.env.VITE_WS_URL;
-export const ADMIN_EMAIL = 'gharbid.admin@gmail.com';
 
 export const ROUTES = {
   HOME: '/',
@@ -20,7 +19,6 @@ export const ROUTES = {
   BUYER_MEMBERSHIP: '/buyer/membership',
   BUYER_PROFILE: '/buyer/profile',
   SELLER_DASHBOARD: '/seller/dashboard',
-  ADMIN_DASHBOARD: '/admin/dashboard',
   CHAT: '/chat',
   PROFILE: '/profile',
   MEMBERSHIP: '/membership',

@@ -23,8 +23,16 @@ export const useAuctionStore = create<AuctionState>((set, get) => ({
   isConnected: false,
   timeLeft: 0,
 
-  setAuction: (auction) =>
-    set({ currentAuction: auction, currentBid: auction.currentHighestBid, timeLeft: auction.endTime - Date.now() }),
+  setAuction: (auction) => {
+    const now = Date.now();
+    let timeLeft = 0;
+    if (auction.status === 'scheduled') {
+      timeLeft = new Date(auction.startTime).getTime() - now;
+    } else if (auction.status === 'live') {
+      timeLeft = new Date(auction.endTime).getTime() - now;
+    }
+    set({ currentAuction: auction, currentBid: auction.currentHighestBid, timeLeft });
+  },
 
   onNewBid: (bid) =>
     set((state) => ({
@@ -35,7 +43,7 @@ export const useAuctionStore = create<AuctionState>((set, get) => ({
   setTimeLeft: (ms) => set({ timeLeft: ms }),
 
   connectToAuction: (auctionId) => {
-    socket.emit('join_auction', auctionId);
+    socket.emit('join_auction', { auctionId });
     socket.on('new_bid', (bid: Bid) => get().onNewBid(bid));
     socket.on('auction_extended', ({ newEndTime }: { newEndTime: number }) => {
       set({ timeLeft: newEndTime - Date.now() });
@@ -44,7 +52,7 @@ export const useAuctionStore = create<AuctionState>((set, get) => ({
   },
 
   disconnectFromAuction: (auctionId) => {
-    socket.emit('leave_auction', auctionId);
+    socket.emit('leave_auction', { auctionId });
     socket.off('new_bid');
     socket.off('auction_extended');
     set({ isConnected: false });

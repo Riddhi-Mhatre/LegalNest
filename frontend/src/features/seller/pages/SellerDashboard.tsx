@@ -1,7 +1,7 @@
-import { Building2, Plus, Eye, Clock, CheckCircle, XCircle, BarChart2, FileText, ChevronRight, MessageSquare } from 'lucide-react';
-import { useAuthStore } from '../store/authStore';
+import { Building2, Plus, Eye, Clock, CheckCircle, BarChart2, ChevronRight, MessageSquare, ShieldCheck } from 'lucide-react';
+import { useAuthStore } from '../../../store/authStore';
 import { useQuery } from '@tanstack/react-query';
-import { getSellerDashboard, getSellerProperties } from '../services/sellerService';
+import { getSellerDashboard, getSellerProperties } from '../../../services/sellerService';
 import { useNavigate } from 'react-router-dom';
 import {
   XAxis,
@@ -64,25 +64,11 @@ export default function SellerDashboard() {
       link: '/seller/my-properties?filter=all',
     },
     {
-      label: 'Pending Approval',
-      value: dashLoading ? '—' : String(dashboard?.pendingApproval ?? 0),
-      icon: Clock,
-      color: 'text-yellow-400',
-      link: '/seller/my-properties?filter=pending',
-    },
-    {
       label: 'Approved',
       value: dashLoading ? '—' : String(dashboard?.approved ?? 0),
       icon: CheckCircle,
       color: 'text-emerald-400',
       link: '/seller/my-properties?filter=approved',
-    },
-    {
-      label: 'Rejected',
-      value: dashLoading ? '—' : String(dashboard?.rejected ?? 0),
-      icon: XCircle,
-      color: 'text-red-400',
-      link: '/seller/my-properties?filter=rejected',
     },
     {
       label: 'Total Views',
@@ -124,11 +110,11 @@ export default function SellerDashboard() {
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <button
-                onClick={() => navigate('/seller/documents')}
+                onClick={() => navigate('/seller/identity-documents')}
                 className="flex items-center justify-center gap-2 px-6 py-3.5 bg-dark-hover border border-dark-border rounded-xl font-bold hover:bg-white/5 transition-all text-sm"
               >
-                <FileText size={18} />
-                Documents
+                <ShieldCheck size={18} />
+                Identity Documents
               </button>
               <button
                 onClick={() => navigate('/seller/add-property')}
@@ -145,7 +131,7 @@ export default function SellerDashboard() {
       <div className="max-w-[1400px] mx-auto px-4 md:px-12 py-12 space-y-12">
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <div
               key={stat.label}

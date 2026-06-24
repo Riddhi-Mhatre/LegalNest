@@ -1,6 +1,6 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+﻿import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSellerProperties, deleteSellerProperty } from '../services/sellerService';
+import { getSellerProperties, deleteSellerProperty } from '../../../services/sellerService';
 import {
   Building2, Plus, Pencil, Trash2, FileText, Eye, Gavel,
   CreditCard, ShieldCheck, ShieldAlert, MapPin, Calendar

@@ -10,7 +10,16 @@ interface PropertyCardProps {
 }
 
 export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
-  const isVerified = property.verificationStatus === 'approved';
+  const isVerified =
+    property.verificationStatus === 'approved' ||
+    (property.verificationStatus as string) === 'verified' ||
+    (property as any).status === 'approved';
+
+  // Support both nested location object and flat city/state fields
+  const city  = property.location?.city  ?? (property as any).city  ?? '';
+  const state = property.location?.state ?? (property as any).state ?? '';
+  const price = property.price ?? (property as any).salePrice ?? (property as any).rentPrice ?? 0;
+  const area  = property.area  ?? (property as any).areasqft ?? 0;
 
   return (
     <Link
@@ -43,7 +52,7 @@ export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
         )}
         {/* Price */}
         <div className="absolute bottom-3 right-3 bg-dark-card/90 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-dark-border">
-          <span className="text-primary font-bold text-sm">{formatShortPrice(property.price)}</span>
+          <span className="text-primary font-bold text-sm">{formatShortPrice(price)}</span>
         </div>
       </div>
 
@@ -52,7 +61,7 @@ export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
         <h3 className="font-semibold text-sm text-white line-clamp-1 mb-1">{property.title}</h3>
         <div className="flex items-center gap-1 text-muted text-xs mb-3">
           <MapPin size={11} />
-          <span>{property.location.city}, {property.location.state}</span>
+          <span>{city}{city && state ? ', ' : ''}{state}</span>
         </div>
 
         {/* Property details */}
@@ -63,7 +72,7 @@ export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
           {property.bathrooms !== undefined && (
             <span className="flex items-center gap-1"><Bath size={11} /> {property.bathrooms} bath</span>
           )}
-          <span className="flex items-center gap-1"><Square size={11} /> {property.area.toLocaleString()} sqft</span>
+          <span className="flex items-center gap-1"><Square size={11} /> {area.toLocaleString()} sqft</span>
         </div>
       </div>
     </Link>

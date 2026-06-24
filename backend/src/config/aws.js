@@ -11,7 +11,7 @@ const clientConfig = { region: env.AWS_REGION };
 // DynamoDB
 const dynamoRawClient = new DynamoDBClient(clientConfig);
 export const dynamoClient = DynamoDBDocumentClient.from(dynamoRawClient, {
-  marshallOptions: { removeUndefinedValues: true, convertEmptyValues: false },
+  marshallOptions: { removeUndefinedValues: true, convertEmptyValues: true },
   unmarshallOptions: { wrapNumbers: false },
 });
 

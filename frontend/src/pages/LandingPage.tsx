@@ -14,16 +14,16 @@ const STATS = [
 ];
 
 const STEPS = [
-  { icon: Shield, title: 'Browse Verified Listings', desc: 'All properties are admin-verified with legal documents.' },
+  { icon: Shield, title: 'Browse Verified Listings', desc: 'All properties are verified with legal documents before listing.' },
   { icon: Gavel, title: 'Bid or Express Interest', desc: 'Join live English auctions or express direct purchase interest.' },
-  { icon: MessageCircle, title: 'Chat After Approval', desc: 'Admin verifies and unlocks secure one-to-one chat with the seller.' },
+  { icon: MessageCircle, title: 'Chat with Sellers', desc: 'Secure one-to-one chat unlocked after expressing interest or winning an auction.' },
   { icon: TrendingUp, title: 'Complete Offline', desc: 'Schedule inspection, legal verification, and ownership transfer offline.' },
 ];
 
 export default function LandingPage() {
   const { data: properties, isLoading } = useQuery({
     queryKey: ['properties', 'featured'],
-    queryFn: () => getProperties({ status: 'verified' }),
+    queryFn: () => getProperties({ status: 'approved' }),
   });
 
   return (

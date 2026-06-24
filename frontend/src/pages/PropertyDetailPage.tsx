@@ -258,7 +258,7 @@ export default function PropertyDetailPage() {
                  <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl mt-4">
                   <AlertCircle size={20} className="text-yellow-400 shrink-0 mt-0.5" />
                   <p className="text-xs text-yellow-100/70 leading-relaxed">
-                    This property is currently pending admin approval and is not visible in public listings yet.
+                    This property is currently pending review and is not visible in public listings yet.
                   </p>
                 </div>
               )}

@@ -19,7 +19,7 @@ export const scheduleAuction = async (req, res, next) => {
     if (property.sellerId !== sellerId) {
       return res.status(HTTP.FORBIDDEN).json({ success: false, error: { code: 'AUTH_003', message: 'Access denied' } });
     }
-    if (property.verificationStatus !== 'approved') {
+    if (property.status !== 'approved') {
       return res.status(HTTP.BAD_REQUEST).json({ success: false, error: { code: 'AUC_002', message: 'Property must be approved to schedule auction' } });
     }
 

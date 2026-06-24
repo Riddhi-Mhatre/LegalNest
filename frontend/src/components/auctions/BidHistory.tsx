@@ -26,7 +26,7 @@ export const BidHistory = () => {
                 <p className={`text-sm font-semibold ${i === 0 ? 'text-primary' : 'text-white'}`}>
                   {formatPrice(bid.amount)}
                 </p>
-                <p className="text-xs text-muted">{bid.userId.slice(0, 8)}…</p>
+                <p className="text-xs text-muted">{(bid.userId ?? bid.bidderId ?? '').slice(0, 8)}…</p>
               </div>
               <p className="text-xs text-muted">{formatRelativeTime(new Date(bid.timestamp).toISOString())}</p>
             </div>

@@ -31,7 +31,7 @@ export const getDocumentUploadUrl = async (req, res, next) => {
     const userId = req.user.userId;
     const { fileName, fileType, docType } = req.body;
     const url = await s3Service.getDocumentUploadUrl(userId, fileName, fileType, docType);
-    res.json({ success: true, data: { uploadUrl: url } });
+    res.json({ success: true, data: { uploadUrl: url.uploadUrl, s3Key: url.s3Key } });
   } catch (err) {
     next(err);
   }

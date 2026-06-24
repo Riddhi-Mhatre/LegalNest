@@ -62,29 +62,7 @@ export const login = async (req, res, next) => {
       });
     }
     
-    let user;
-    try {
-      user = await UserModel.getUserByEmail(email);
-    } catch (err) {
-      if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-        user = {
-          userId: generateUUID(),
-          email: email.toLowerCase(),
-          name: 'Platform Admin',
-          role: 'admin',
-          isVerified: true,
-          createdAt: new Date().toISOString()
-        };
-        await UserModel.putUser(user);
-      } else {
-        throw err;
-      }
-    }
-
-    // Always enforce admin role from env
-    if (user.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-      user.role = 'admin';
-    }
+    const user = await UserModel.getUserByEmail(email);
 
     res.json({ success: true, data: { token: tokens?.IdToken, user, cognitoTokens: tokens } });
   } catch (err) {
@@ -106,32 +84,14 @@ export const respondToChallenge = async (req, res, next) => {
 
     const tokens = await cognitoService.respondToNewPasswordChallenge({ email, newPassword, session });
 
-    // Ensure the admin user exists in DynamoDB
     let user;
     try {
       user = await UserModel.getUserByEmail(email);
     } catch {
-      if (email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-        user = {
-          userId: generateUUID(),
-          email: email.toLowerCase(),
-          name: 'Platform Admin',
-          role: 'admin',
-          isVerified: true,
-          createdAt: new Date().toISOString(),
-        };
-        await UserModel.putUser(user);
-      } else {
-        return res.status(404).json({
-          success: false,
-          error: { code: 'AUTH_004', message: 'User record not found.' },
-        });
-      }
-    }
-
-    // Always enforce admin role from env
-    if (user.email.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
-      user.role = 'admin';
+      return res.status(404).json({
+        success: false,
+        error: { code: 'AUTH_004', message: 'User record not found.' },
+      });
     }
 
     logger.info(`Challenge completed for ${email}`);

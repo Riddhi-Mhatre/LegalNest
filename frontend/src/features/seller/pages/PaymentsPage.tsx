@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
+﻿import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSellerProperties, getSellerPayments, payPlatformFee } from '../services/sellerService';
+import { getSellerProperties, getSellerPayments, payPlatformFee } from '../../../services/sellerService';
 import { Building2, CreditCard, CheckCircle, Clock, IndianRupee, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -26,7 +26,7 @@ export default function PaymentsPage() {
   const payMutation = useMutation({
     mutationFn: payPlatformFee,
     onSuccess: () => {
-      toast.success('Platform fee paid! Property submitted for admin review.');
+      toast.success('Platform fee paid! Your property is now live.');
       queryClient.invalidateQueries({ queryKey: ['seller'] });
     },
     onError: () => toast.error('Payment failed. Please try again.'),
@@ -46,7 +46,7 @@ export default function PaymentsPage() {
             Platform Fees
           </h1>
           <p className="text-muted mt-2 text-sm max-w-lg">
-            Pay the one-time listing fee to submit your property for admin verification. Your listing goes live after approval.
+            Pay the one-time listing fee to publish your property listing. Your listing goes live immediately after payment.
           </p>
         </div>
 
