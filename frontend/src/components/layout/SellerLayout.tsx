@@ -1,5 +1,5 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { BuyerSidebar } from './BuyerSidebar';
+import { SellerSidebar } from './SellerSidebar';
 import { Bell, Menu, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useState, useEffect } from 'react';
@@ -12,7 +12,7 @@ import { ROUTES } from '../../utils/constants';
 import { SearchBar } from '../common/SearchBar';
 import { useChatStore } from '../../store/chatStore';
 
-export function BuyerLayout() {
+export function SellerLayout() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
@@ -71,7 +71,7 @@ export function BuyerLayout() {
 
   return (
     <div className="min-h-screen bg-black flex overflow-hidden">
-      <BuyerSidebar isOpen={isDesktopSidebarOpen} />
+      <SellerSidebar isOpen={isDesktopSidebarOpen} />
       
       {/* Mobile overlay */}
       {mobileMenuOpen && (
@@ -99,7 +99,7 @@ export function BuyerLayout() {
             >
               {isDesktopSidebarOpen ? <PanelLeftClose size={24} /> : <PanelLeftOpen size={24} />}
             </button>
-            <SearchBar role="buyer" />
+            <SearchBar role="seller" />
           </div>
 
           <div className="flex items-center gap-6">
@@ -126,11 +126,11 @@ export function BuyerLayout() {
               >
                 <div className={`w-10 h-10 rounded-full p-[2px] shrink-0 ${user?.isVerified ? 'bg-emerald-500' : 'bg-red-500'}`}>
                   <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                    <span className={`font-bold text-sm ${user?.isVerified ? 'text-emerald-400' : 'text-red-400'}`}>{user?.name?.charAt(0) || 'B'}</span>
+                    <span className={`font-bold text-sm ${user?.isVerified ? 'text-emerald-400' : 'text-red-400'}`}>{user?.name?.charAt(0) || 'S'}</span>
                   </div>
                 </div>
                 <div className="hidden md:block">
-                  <p className="text-sm font-bold text-white">{user?.name || 'Buyer'}</p>
+                  <p className="text-sm font-bold text-white">{user?.name || 'Seller'}</p>
                   <p className={`text-xs font-medium tracking-widest uppercase ${user?.isVerified ? 'text-emerald-400' : 'text-red-400'}`}>
                     {user?.isVerified ? 'Verified' : 'Unverified'}
                   </p>
@@ -150,8 +150,8 @@ export function BuyerLayout() {
 
         <main className={`flex-1 bg-black ${isChatPage ? 'flex flex-col min-h-0' : 'overflow-y-auto p-4 md:p-8 custom-scrollbar'} relative`}>
            {/* Decorative elements */}
-           <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[120px] rounded-full pointer-events-none" />
-           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-accent/5 blur-[100px] rounded-full pointer-events-none" />
+           <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-secondary/5 blur-[120px] rounded-full pointer-events-none" />
+           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/5 blur-[100px] rounded-full pointer-events-none" />
            <div className={`relative z-10 ${isChatPage ? 'flex-1 flex flex-col min-h-0' : 'max-w-[1400px] mx-auto'}`}>
               <Outlet />
            </div>

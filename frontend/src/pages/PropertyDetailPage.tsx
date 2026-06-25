@@ -1,14 +1,15 @@
-import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getProperty, expressInterest } from '../services/propertyService';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getProperty } from '../services/propertyService';
+import { expressInterest, getBuyerInquiries } from '../services/inquiryService';
+import { getSavedProperties, saveProperty, removeSavedProperty } from '../services/userService';
 import { useAuthStore } from '../store/authStore';
 import { ImageGallery } from '../components/properties/ImageGallery';
 import { FullPageLoader } from '../components/common/Loader';
 import { formatPrice } from '../utils/formatters';
 import { toast } from 'sonner';
-import {
-  MapPin, Bed, Bath, Square, Handshake, Heart, Share2,
-  Phone, ShieldCheck, Clock, Eye, AlertCircle
+import { MapPin, Bed, Bath, Square, Handshake, Heart, Share2,
+  Phone, ShieldCheck, Clock, Eye, AlertCircle, CheckCircle, MessageSquare
 } from 'lucide-react';
 import { ROUTES } from '../utils/constants';
 import { useState } from 'react';
@@ -17,6 +18,9 @@ export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isAuthenticated, user } = useAuthStore();
   const [showShareTooltip, setShowShareTooltip] = useState(false);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const isBuyer = user?.role === 'buyer';
 
   const { data: property, isLoading } = useQuery({
     queryKey: ['property', id],
@@ -26,8 +30,63 @@ export default function PropertyDetailPage() {
 
   const interestMutation = useMutation({
     mutationFn: () => expressInterest(id!),
-    onSuccess: () => toast.success('Interest expressed! The seller will be notified.'),
-    onError: () => toast.error('Failed to express interest.'),
+    onSuccess: () => {
+      toast.success('Interest expressed! The seller will be notified.');
+      queryClient.invalidateQueries({ queryKey: ['buyer', 'inquiries'] });
+    },
+    onError: (err: any) => {
+      if (err.response?.status === 409) {
+        toast.info('You already have a pending inquiry for this property.');
+      } else {
+        toast.error('Failed to express interest.');
+      }
+    },
+  });
+
+  // Fetch buyer's inquiries to determine current state for this property
+  const { data: buyerInquiries = [] } = useQuery({
+    queryKey: ['buyer', 'inquiries'],
+    queryFn: getBuyerInquiries,
+    enabled: isBuyer && isAuthenticated,
+  });
+
+  const myInquiry = (buyerInquiries as any[]).find((inq: any) => inq.propertyId === id);
+
+  const city = property?.location?.city ?? (property as any)?.city ?? '';
+  const state = property?.location?.state ?? (property as any)?.state ?? '';
+  const address = property?.location?.address ?? (property as any)?.address ?? '';
+  const pincode = property?.location?.pincode ?? (property as any)?.pincode ?? '';
+  const price = property?.price ?? (property as any)?.salePrice ?? (property as any)?.rentPrice ?? 0;
+
+  const { data: savedItems = [] } = useQuery({
+    queryKey: ['savedProperties'],
+    queryFn: getSavedProperties,
+    enabled: isBuyer,
+  });
+
+  const isSaved = savedItems.some((item: any) => item.propertyId === id);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      if (!isBuyer) throw new Error('Must be a logged in buyer to save properties.');
+      if (isSaved) {
+        await removeSavedProperty(id!);
+      } else {
+        await saveProperty(id!);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['savedProperties'] });
+      toast.success(isSaved ? 'Removed from saved properties' : 'Property saved successfully');
+    },
+    onError: (err: any) => {
+      if (err.response?.status === 409) {
+        // Already saved in backend, sync frontend state
+        queryClient.invalidateQueries({ queryKey: ['savedProperties'] });
+      } else {
+        toast.error(err.response?.data?.error?.message || err.message || 'Failed to update saved properties');
+      }
+    }
   });
 
   const handleShare = () => {
@@ -53,22 +112,16 @@ export default function PropertyDetailPage() {
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl shadow-xl backdrop-blur-xl">
               <div className="flex flex-wrap items-center gap-3 mb-4">
-                {property.verificationStatus === 'approved' ? (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold tracking-wide uppercase">
-                    <ShieldCheck size={14} /> Approved
+                    <ShieldCheck size={14} /> Verified
                   </span>
-                ) : (
-                  <span className="flex items-center gap-1.5 px-3 py-1 bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 rounded-full text-xs font-bold tracking-wide uppercase">
-                    <Clock size={14} /> Pending Approval
-                  </span>
-                )}
                 {property.isAuctionRequested && (
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold tracking-wide uppercase">
                     Auction Eligible
                   </span>
                 )}
                 <span className="flex items-center gap-1.5 px-3 py-1 bg-white/5 text-muted border border-white/10 rounded-full text-xs font-bold tracking-wide uppercase">
-                  For {property.listingType === 'sale' ? 'Sale' : 'Rent'}
+                  For Sale
                 </span>
               </div>
               
@@ -76,7 +129,7 @@ export default function PropertyDetailPage() {
               
               <p className="text-lg text-muted flex items-center gap-2 mb-8">
                 <MapPin className="text-primary" size={20} /> 
-                {property.location?.address}, {property.location?.city}, {property.location?.state} {property.location?.pincode}
+                {address}{address && city ? ', ' : ''}{city}{city && state ? ', ' : ''}{state} {pincode}
               </p>
 
               {/* Quick Stats Grid */}
@@ -139,19 +192,19 @@ export default function PropertyDetailPage() {
               <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
                   <p className="text-xs text-muted uppercase tracking-wider mb-1">City</p>
-                  <p className="font-bold">{property.location?.city || '—'}</p>
+                  <p className="font-bold">{city || '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted uppercase tracking-wider mb-1">State</p>
-                  <p className="font-bold">{property.location?.state || '—'}</p>
+                  <p className="font-bold">{state || '—'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted uppercase tracking-wider mb-1">Pincode</p>
-                  <p className="font-bold">{property.location?.pincode || '—'}</p>
+                  <p className="font-bold">{pincode || '—'}</p>
                 </div>
                 <div className="col-span-2 md:col-span-1">
                   <p className="text-xs text-muted uppercase tracking-wider mb-1">Address</p>
-                  <p className="font-bold text-sm">{property.location?.address || '—'}</p>
+                  <p className="font-bold text-sm">{address || '—'}</p>
                 </div>
               </div>
               <div className="h-[400px] w-full rounded-xl overflow-hidden border border-dark-border relative bg-black/50">
@@ -177,23 +230,51 @@ export default function PropertyDetailPage() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -z-10 group-hover:bg-primary/20 transition-colors" />
                 <p className="text-muted text-sm mb-2 uppercase tracking-widest font-bold">Asking Price</p>
                 <p className="text-4xl lg:text-5xl font-display font-black text-white mb-2">
-                  {formatPrice(property.price)}
+                  {formatPrice(price)}
                 </p>
                 <p className="text-sm text-primary/80 font-semibold mb-8 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Est. EMI: {formatPrice(property.price * 0.0085)}/mo
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary" /> Est. EMI: {formatPrice(price * 0.0085)}/mo
                 </p>
 
                 <div className="space-y-4">
                   {user?.role !== 'seller' && (
                     <>
-                      {isAuthenticated ? (
-                        <button
-                          onClick={() => interestMutation.mutate()}
-                          disabled={interestMutation.isPending}
-                          className="w-full bg-primary text-black font-bold uppercase tracking-widest px-6 py-4 rounded-xl hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all flex items-center justify-center gap-2"
-                        >
-                          <Handshake size={20} /> Express Interest
-                        </button>
+                      {property.status === 'sold' ? (
+                        <div className="w-full bg-blue-500/10 border border-blue-500/30 text-blue-400 font-bold uppercase tracking-widest px-6 py-4 rounded-xl flex items-center justify-center gap-2">
+                          <CheckCircle size={20} /> Property Sold
+                        </div>
+                      ) : isAuthenticated ? (
+                        isBuyer && (
+                          <>
+                            {!myInquiry && (
+                              <button
+                                onClick={() => interestMutation.mutate()}
+                                disabled={interestMutation.isPending}
+                                className="w-full bg-primary text-black font-bold uppercase tracking-widest px-6 py-4 rounded-xl hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                              >
+                                <Handshake size={20} /> {interestMutation.isPending ? 'Sending...' : 'Express Interest'}
+                              </button>
+                            )}
+                            {myInquiry?.status === 'pending' && (
+                              <div className="w-full bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold uppercase tracking-widest px-6 py-4 rounded-xl flex items-center justify-center gap-2">
+                                <Clock size={20} /> Request Sent — Awaiting Seller
+                              </div>
+                            )}
+                            {myInquiry?.status === 'accepted' && (
+                              <button
+                                onClick={() => navigate(`/buyer/chat?roomId=${myInquiry.roomId}`)}
+                                className="w-full bg-emerald-500 text-white font-bold uppercase tracking-widest px-6 py-4 rounded-xl hover:bg-emerald-400 hover:shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all flex items-center justify-center gap-2"
+                              >
+                                <MessageSquare size={20} /> Open Chat
+                              </button>
+                            )}
+                            {myInquiry?.status === 'rejected' && (
+                              <div className="w-full bg-red-500/10 border border-red-500/30 text-red-400 font-bold uppercase tracking-widest px-6 py-4 rounded-xl flex items-center justify-center gap-2">
+                                <AlertCircle size={20} /> Request Declined
+                              </div>
+                            )}
+                          </>
+                        )
                       ) : (
                         <Link to={ROUTES.LOGIN} className="w-full bg-primary text-black font-bold uppercase tracking-widest px-6 py-4 rounded-xl hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(255,215,0,0.4)] transition-all flex items-center justify-center gap-2">
                           Log in to Contact
@@ -201,8 +282,12 @@ export default function PropertyDetailPage() {
                       )}
 
                       <div className="flex gap-4">
-                        <button className="flex-1 px-4 py-3 bg-dark-hover border border-dark-border rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-white/5 hover:border-white/20 transition-colors">
-                          <Heart size={18} /> Save
+                        <button 
+                          onClick={() => saveMutation.mutate()}
+                          disabled={saveMutation.isPending}
+                          className={`flex-1 px-4 py-3 bg-dark-hover border border-dark-border rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-white/5 hover:border-white/20 transition-colors ${isSaved ? 'text-primary border-primary/30' : ''}`}
+                        >
+                          <Heart size={18} className={isSaved ? 'fill-primary text-primary' : ''} /> {isSaved ? 'Saved' : 'Save'}
                         </button>
                         <button 
                           onClick={handleShare}
@@ -241,11 +326,7 @@ export default function PropertyDetailPage() {
                     <p className="text-sm text-muted flex items-center gap-1"><ShieldCheck size={14} className="text-emerald-400" /> Identity Verified</p>
                   </div>
                 </div>
-                {user?.role !== 'seller' && (
-                  <button className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl font-bold text-sm hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
-                    <Phone size={16} /> Contact Seller
-                  </button>
-                )}
+
               </div>
 
               {/* Stats Footer */}
@@ -254,14 +335,7 @@ export default function PropertyDetailPage() {
                 <span className="flex items-center gap-1.5"><Clock size={14} /> Listed {new Date(property.createdAt).toLocaleDateString()}</span>
               </div>
               
-              {property.verificationStatus !== 'approved' && (
-                 <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl mt-4">
-                  <AlertCircle size={20} className="text-yellow-400 shrink-0 mt-0.5" />
-                  <p className="text-xs text-yellow-100/70 leading-relaxed">
-                    This property is currently pending review and is not visible in public listings yet.
-                  </p>
-                </div>
-              )}
+
             </div>
           </div>
 

@@ -2,16 +2,16 @@ import * as SavedPropertiesModel from '../models/dynamodb/SavedPropertiesModel.j
 import * as PropertyModel from '../models/dynamodb/PropertyModel.js';
 import * as AuctionModel from '../models/dynamodb/AuctionModel.js';
 import * as BidModel from '../models/dynamodb/BidModel.js';
-import * as VisitModel from '../models/dynamodb/VisitModel.js';
+
 import * as PurchaseModel from '../models/dynamodb/PurchaseModel.js';
 import * as notificationService from './notificationService.js';
 import { env } from '../config/env.js';
 
 // ─── Dashboard ─────────────────────────────────────────────────────────────────
 export const getDashboardStats = async (buyerId) => {
-  const [saved, visits, purchases, notifications, bids] = await Promise.all([
+  const [saved, purchases, notifications, bids] = await Promise.all([
     SavedPropertiesModel.getSaved(buyerId),
-    VisitModel.getVisitsByBuyer(buyerId),
+
     PurchaseModel.getPurchasesByBuyer(buyerId),
     notificationService.getUserNotifications(buyerId),
     getBuyerBidsFromBidTable(buyerId),
@@ -19,14 +19,14 @@ export const getDashboardStats = async (buyerId) => {
 
   const activeBids = bids.filter(b => b.auctionStatus === 'live');
   const wonAuctions = bids.filter(b => b.auctionStatus === 'ended' && b.isWinner);
-  const scheduledVisits = visits.filter(v => v.status === 'scheduled' || v.status === 'confirmed');
+
   const unreadNotifications = notifications.filter(n => !n.isRead);
 
   return {
     savedProperties: saved.length,
     activeBids: activeBids.length,
     wonAuctions: wonAuctions.length,
-    scheduledVisits: scheduledVisits.length,
+
     purchasedProperties: purchases.length,
     notifications: unreadNotifications.length,
   };

@@ -20,7 +20,6 @@ const PropertyListPage         = lazy(() => import('./pages/PropertyListPage'));
 const PropertyDetailPage       = lazy(() => import('./pages/PropertyDetailPage'));
 const AuctionsListPage         = lazy(() => import('./pages/AuctionsListPage'));
 const AuctionRoomPage          = lazy(() => import('./pages/AuctionRoomPage'));
-const MembershipPage           = lazy(() => import('./pages/MembershipPage'));
 const ChatPage                 = lazy(() => import('./pages/ChatPage'));
 const ProfilePage              = lazy(() => import('./pages/ProfilePage'));
 
@@ -29,16 +28,15 @@ const BuyerDashboard          = lazy(() => import('./features/buyer/pages/BuyerD
 const BuyerAuctionsPage       = lazy(() => import('./features/buyer/pages/BuyerAuctionsPage'));
 const BuyerBidsPage           = lazy(() => import('./features/buyer/pages/BuyerBidsPage'));
 const BuyerSavedPage          = lazy(() => import('./features/buyer/pages/BuyerSavedPage'));
-const BuyerVisitsPage         = lazy(() => import('./features/buyer/pages/BuyerVisitsPage'));
 const BuyerLegalDocumentsPage = lazy(() => import('./features/buyer/pages/BuyerLegalDocumentsPage'));
 const BuyerPurchasesPage      = lazy(() => import('./features/buyer/pages/BuyerPurchasesPage'));
-const BuyerMembershipPage     = lazy(() => import('./features/buyer/pages/BuyerMembershipPage'));
 const BuyerProfilePage        = lazy(() => import('./features/buyer/pages/BuyerProfilePage'));
 
 // ─── Seller Feature Pages ───────────────────────────────────────────────────
 const SellerDashboard              = lazy(() => import('./features/seller/pages/SellerDashboard'));
 const AddPropertyPage              = lazy(() => import('./features/seller/pages/AddPropertyPage'));
 const MyPropertiesPage             = lazy(() => import('./features/seller/pages/MyPropertiesPage'));
+const SellerSoldPropertiesPage     = lazy(() => import('./features/seller/pages/SellerSoldPropertiesPage'));
 const PaymentsPage                 = lazy(() => import('./features/seller/pages/PaymentsPage'));
 const DocumentUploadPage           = lazy(() => import('./features/seller/pages/DocumentUploadPage'));
 const SellerAuctionDashboard       = lazy(() => import('./features/seller/pages/SellerAuctionDashboard'));
@@ -46,6 +44,7 @@ const SellerAuctionManagementPage  = lazy(() => import('./features/seller/pages/
 const SellerIdentityDocsPage       = lazy(() => import('./features/seller/pages/SellerIdentityDocsPage'));
 
 import { BuyerLayout } from './components/layout/BuyerLayout';
+import { SellerLayout } from './components/layout/SellerLayout';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -55,7 +54,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
       <div className="min-h-screen flex flex-col">
         <Navbar />
         <main className="flex-1">
@@ -68,7 +67,6 @@ export default function App() {
               <Route path="/properties/:id" element={<PropertyDetailPage />} />
               <Route path="/auctions" element={<AuctionsListPage />} />
               <Route path="/auctions/:id" element={<AuctionRoomPage />} />
-              <Route path="/membership" element={<MembershipPage />} />
 
               {/* ── Auth pages – redirect to dashboard if already logged in ── */}
               <Route element={<PublicOnlyRoute />}>
@@ -83,25 +81,30 @@ export default function App() {
                   <Route path="/buyer/auctions"        element={<BuyerAuctionsPage />} />
                   <Route path="/buyer/bids"            element={<BuyerBidsPage />} />
                   <Route path="/buyer/saved"           element={<BuyerSavedPage />} />
-                  <Route path="/buyer/visits"          element={<BuyerVisitsPage />} />
                   <Route path="/buyer/legal-documents" element={<BuyerLegalDocumentsPage />} />
+                  <Route path="/buyer/properties"      element={<PropertyListPage />} />
+                  <Route path="/buyer/properties/:id"  element={<PropertyDetailPage />} />
+                  <Route path="/buyer/chat"            element={<ChatPage />} />
                   <Route path="/buyer/purchases"       element={<BuyerPurchasesPage />} />
-                  <Route path="/buyer/membership"      element={<BuyerMembershipPage />} />
                   <Route path="/buyer/profile"         element={<BuyerProfilePage />} />
                 </Route>
               </Route>
 
               {/* ── Protected – Seller ── */}
               <Route element={<PrivateRoute allowedRoles={['seller']} />}>
-                <Route path="/seller"                  element={<SellerDashboard />} />
-                <Route path="/seller/dashboard"        element={<SellerDashboard />} />
-                <Route path="/seller/add-property"     element={<AddPropertyPage />} />
-                <Route path="/seller/my-properties"    element={<MyPropertiesPage />} />
-                <Route path="/seller/auctions"         element={<SellerAuctionDashboard />} />
-                <Route path="/seller/auctions/:id"     element={<SellerAuctionManagementPage />} />
-                <Route path="/seller/payments"         element={<PaymentsPage />} />
-                <Route path="/seller/documents"        element={<DocumentUploadPage />} />
-                <Route path="/seller/identity-documents" element={<SellerIdentityDocsPage />} />
+                <Route element={<SellerLayout />}>
+                  <Route path="/seller"                  element={<SellerDashboard />} />
+                  <Route path="/seller/dashboard"        element={<SellerDashboard />} />
+                  <Route path="/seller/add-property"     element={<AddPropertyPage />} />
+                  <Route path="/seller/my-properties"    element={<MyPropertiesPage />} />
+                  <Route path="/seller/sold-properties"  element={<SellerSoldPropertiesPage />} />
+                  <Route path="/seller/chat"             element={<ChatPage />} />
+                  <Route path="/seller/auctions"         element={<SellerAuctionDashboard />} />
+                  <Route path="/seller/auctions/:id"     element={<SellerAuctionManagementPage />} />
+                  <Route path="/seller/payments"         element={<PaymentsPage />} />
+                  <Route path="/seller/documents"        element={<DocumentUploadPage />} />
+                  <Route path="/seller/identity-documents" element={<SellerIdentityDocsPage />} />
+                </Route>
               </Route>
 
               {/* ── Protected – All authenticated ── */}

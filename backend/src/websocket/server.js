@@ -25,6 +25,9 @@ export const initWebSocket = (httpServer) => {
 
   io.on('connection', (socket) => {
     logger.info(`Socket connected: ${socket.id} user: ${socket.userId}`);
+    
+    // Join personal room for targeted alerts
+    socket.join(`user_${socket.userId}`);
 
     auctionHandler(socket, io);
     chatHandler(socket, io);

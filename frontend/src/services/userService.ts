@@ -43,8 +43,14 @@ export const deleteNotification = (notificationId: string) => {
 export const getBuyerBids = () =>
   api.get('/buyer/bids').then(r => r.data.data);
 
-export const getBuyerMembership = () =>
-  api.get('/buyer/membership').then(r => r.data.data);
+export const getPurchases = () =>
+  api.get('/buyer/purchases').then(r => r.data.data);
 
-export const upgradeBuyerMembership = (planId: string) =>
-  api.post('/buyer/membership/upgrade', { planId }).then(r => r.data.data);
+export const getSavedProperties = () =>
+  api.get('/buyer/saved-properties').then(r => r.data.data);
+
+export const saveProperty = (propertyId: string) =>
+  api.post(`/buyer/saved-properties/${propertyId}`).then(r => r.data.data);
+
+export const removeSavedProperty = (propertyId: string) =>
+  api.delete(`/buyer/saved-properties/${propertyId}`).then(r => r.data.data);

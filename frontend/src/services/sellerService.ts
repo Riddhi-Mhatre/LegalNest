@@ -144,3 +144,7 @@ export const getSellerAuctionBids = (propertyId: string): Promise<any> =>
 
 export const getInterestedBuyers = (propertyId: string): Promise<any> =>
   api.get(`/seller/properties/${propertyId}/interested-buyers`).then(r => r.data.data);
+
+export const markPropertySold = (propertyId: string): Promise<any> =>
+  api.post(`/seller/properties/${propertyId}/sold`).then(r => r.data.data);
+

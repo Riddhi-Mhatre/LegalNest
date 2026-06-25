@@ -1,13 +1,10 @@
-﻿import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSellerProperties, getSellerPayments, payPlatformFee } from '../../../services/sellerService';
 import { Building2, CreditCard, CheckCircle, Clock, IndianRupee, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const PLATFORM_FEES = {
-  sale: 999,
-  rent: 299,
-};
+const PLATFORM_FEE = 999;
 
 export default function PaymentsPage() {
   const navigate = useNavigate();
@@ -85,7 +82,7 @@ export default function PaymentsPage() {
             </div>
             <div className="space-y-3">
               {unpaidProperties.map((p: any) => {
-                const fee = PLATFORM_FEES[p.listingType as 'sale' | 'rent'] ?? 299;
+                const fee = PLATFORM_FEE;
                 return (
                   <div
                     key={p.propertyId}
@@ -97,7 +94,7 @@ export default function PaymentsPage() {
                       </div>
                       <div className="min-w-0">
                         <h3 className="font-bold text-white truncate">{p.title}</h3>
-                        <p className="text-xs text-muted capitalize">{p.listingType} · Fee: ₹{fee}</p>
+                        <p className="text-xs text-muted capitalize">For Sale · Fee: ₹{fee}</p>
                       </div>
                     </div>
                     <button
@@ -136,7 +133,7 @@ export default function PaymentsPage() {
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-bold text-white truncate">{p.title}</h3>
-                      <p className="text-xs text-muted capitalize">{p.listingType}</p>
+                      <p className="text-xs text-muted capitalize">For Sale</p>
                     </div>
                   </div>
                   <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full shrink-0">

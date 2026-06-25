@@ -1,4 +1,5 @@
 import * as UserModel from '../models/dynamodb/UserModel.js';
+import * as UserDocsModel from '../models/dynamodb/UserDocsModel.js';
 import * as s3Service from '../services/s3Service.js';
 import { HTTP } from '../utils/constants.js';
 
@@ -18,6 +19,14 @@ export const getProfile = async (req, res, next) => {
 export const updateProfile = async (req, res, next) => {
   try {
     const userId = req.user.userId;
+    
+    if (req.body.kycDocuments) {
+      for (const [docKey, s3Key] of Object.entries(req.body.kycDocuments)) {
+        await UserDocsModel.saveDocument(userId, docKey, { s3Key });
+      }
+      req.body.isVerified = true;
+    }
+    
     const updated = await UserModel.updateUser(userId, req.body);
     res.json({ success: true, data: updated });
   } catch (err) {

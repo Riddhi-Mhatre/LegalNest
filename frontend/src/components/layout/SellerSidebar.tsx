@@ -1,53 +1,62 @@
 import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
-  Search, 
+  PlusCircle, 
+  Building2, 
   Gavel, 
-  Wallet, 
-  Heart, 
+  CreditCard, 
   FileText, 
-  Home, 
-  Settings,
+  ShieldCheck,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  CheckCircle
 } from 'lucide-react';
-import { ROUTES } from '../../utils/constants';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useQuery } from '@tanstack/react-query';
+import { getSellerInquiries } from '../../services/inquiryService';
 
-interface BuyerSidebarProps {
+interface SellerSidebarProps {
   isOpen: boolean;
 }
 
-export function BuyerSidebar({ isOpen }: BuyerSidebarProps) {
+export function SellerSidebar({ isOpen }: SellerSidebarProps) {
   const { logout } = useAuthStore();
   const hasUnreadAlerts = useChatStore((state) => state.hasUnreadAlerts);
+
+  // Fetch inquiries globally to always show dot if there are pending inquiries
+  const { data: inquiries = [] } = useQuery({
+    queryKey: ['inquiries', 'seller'],
+    queryFn: getSellerInquiries,
+  });
+  const pendingInquiriesCount = inquiries.filter((i: any) => i.status === 'pending').length;
   const unreadCounts = useChatStore((state) => state.unreadCounts);
   const totalUnreadMessages = Object.values(unreadCounts).reduce((a, b) => a + b, 0);
-  const showDot = hasUnreadAlerts && totalUnreadMessages === 0;
+  
+  const totalAlerts = pendingInquiriesCount + totalUnreadMessages;
+  const showDot = hasUnreadAlerts && totalAlerts === 0;
 
   const menuItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', path: ROUTES.BUYER_DASHBOARD },
-    { icon: Search, label: 'Browse Properties', path: '/buyer/properties' },
-    { icon: Gavel, label: 'Live Auctions', path: ROUTES.BUYER_AUCTIONS },
-    { icon: MessageSquare, label: 'Messages', path: '/buyer/chat' },
-    { icon: Wallet, label: 'My Bids', path: ROUTES.BUYER_BIDS },
-    { icon: Heart, label: 'Saved Properties', path: ROUTES.BUYER_SAVED },
-    { icon: FileText, label: 'Legal Documents', path: ROUTES.BUYER_LEGAL },
-    { icon: Home, label: 'Purchased Properties', path: ROUTES.BUYER_PURCHASES },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/seller' },
+    { icon: PlusCircle, label: 'Add Property', path: '/seller/add-property' },
+    { icon: Building2, label: 'My Properties', path: '/seller/my-properties' },
+    { icon: CheckCircle, label: 'Sold Properties', path: '/seller/sold-properties' },
+    { icon: MessageSquare, label: 'Inquiries', path: '/seller/chat' },
+    { icon: Gavel, label: 'Live Auctions', path: '/seller/auctions' },
+    { icon: CreditCard, label: 'Payments', path: '/seller/payments' },
   ];
 
   const bottomItems = [
-    { icon: Settings, label: 'Settings', path: ROUTES.BUYER_PROFILE },
+    { icon: ShieldCheck, label: 'Identity Verification', path: '/seller/identity-documents' },
   ];
 
   return (
     <aside className={`h-full bg-dark-card border-r border-dark-border flex flex-col pt-6 hidden lg:flex relative z-10 font-sans transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
       <div className="px-6 mb-8 flex items-center justify-center">
         {isOpen ? (
-          <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent animate-fade-in">GharBid</h2>
+          <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary animate-fade-in">GharBid</h2>
         ) : (
-          <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent animate-fade-in">GB</h2>
+          <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary animate-fade-in">GB</h2>
         )}
       </div>
 
@@ -57,6 +66,7 @@ export function BuyerSidebar({ isOpen }: BuyerSidebarProps) {
           <NavLink
             key={item.label}
             to={item.path}
+            end={item.path === '/seller'}
             title={!isOpen ? item.label : undefined}
             className={({ isActive }) =>
               `flex items-center ${isOpen ? 'px-4 gap-4' : 'justify-center'} py-3 rounded-lg transition-all duration-300 group relative overflow-hidden ${
@@ -71,21 +81,21 @@ export function BuyerSidebar({ isOpen }: BuyerSidebarProps) {
                 <item.icon size={20} className={`z-10 shrink-0 transition-colors ${isActive ? 'text-primary' : 'group-hover:text-primary'}`} />
                 <span className={`z-10 whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
                   {item.label}
-                  {item.label === 'Messages' && totalUnreadMessages > 0 && (
+                  {item.label === 'Inquiries' && totalAlerts > 0 && (
                     <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center shrink-0">
-                      {totalUnreadMessages}
+                      {totalAlerts}
                     </span>
                   )}
-                  {item.label === 'Messages' && showDot && (
+                  {item.label === 'Inquiries' && showDot && (
                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
                   )}
                 </span>
-                {item.label === 'Messages' && !isOpen && totalUnreadMessages > 0 && (
+                {item.label === 'Inquiries' && !isOpen && totalAlerts > 0 && (
                   <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center">
-                    {totalUnreadMessages}
+                    {totalAlerts}
                   </span>
                 )}
-                {item.label === 'Messages' && !isOpen && showDot && (
+                {item.label === 'Inquiries' && !isOpen && showDot && (
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 )}
                 {isActive && (

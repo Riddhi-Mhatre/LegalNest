@@ -1,8 +1,8 @@
-﻿import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSellerProperties, deleteSellerProperty } from '../../../services/sellerService';
+import { getSellerProperties, deleteSellerProperty, markPropertySold } from '../../../services/sellerService';
 import {
-  Building2, Plus, Pencil, Trash2, FileText, Eye, Gavel,
+  Building2, Plus, Pencil, Trash2, FileText, Eye, Gavel, CheckCircle,
   CreditCard, ShieldCheck, ShieldAlert, MapPin, Calendar
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,7 +15,10 @@ const getPrice = (p: any) => {
   if (!raw) return '—';
   return `₹${Number(raw).toLocaleString('en-IN')}`;
 };
-const getStatus = (p: any) => p.verificationStatus ?? p.status ?? 'pending';
+const getStatus = (p: any) => {
+  if (p.status === 'sold') return 'sold';
+  return p.verificationStatus ?? p.status ?? 'pending';
+};
 
 const REQUIRED_DOC_KEYS = ['saleDeed', 'propertyCard', 'taxReceipt', 'ownerAadhar', 'ownerPan'];
 
@@ -32,6 +35,7 @@ const getDocsCount = (p: any): { uploaded: number; total: number } => {
 const statusConfig: Record<string, { label: string; class: string; icon?: any }> = {
   verified:  { label: 'Approved', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
   approved:  { label: 'Approved', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' },
+  sold:      { label: 'Sold',     class: 'bg-blue-500/10 text-blue-400 border-blue-500/30' },
   pending:   { label: 'Pending',  class: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30' },
   rejected:  { label: 'Rejected', class: 'bg-red-500/10 text-red-400 border-red-500/30' },
   draft:     { label: 'Draft',    class: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
@@ -51,8 +55,11 @@ export default function MyPropertiesPage() {
   });
 
   let filteredProperties = (properties as any[]).filter(p => {
+    const status = getStatus(p);
+    if (filterParam === 'sold') return status === 'sold';
+    if (status === 'sold') return false; // Exclude sold from 'all' view
     if (!filterParam || filterParam === 'all') return true;
-    return getStatus(p) === filterParam;
+    return status === filterParam;
   });
 
   if (sortParam === 'views') {
@@ -81,6 +88,20 @@ export default function MyPropertiesPage() {
   const handleDelete = (propertyId: string, title: string) => {
     if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     deleteMutation.mutate(propertyId);
+  };
+
+  const soldMutation = useMutation({
+    mutationFn: markPropertySold,
+    onSuccess: () => {
+      toast.success('Property marked as sold.');
+      queryClient.invalidateQueries({ queryKey: ['seller'] });
+    },
+    onError: () => toast.error('Failed to mark property as sold.'),
+  });
+
+  const handleMarkSold = (propertyId: string, title: string) => {
+    if (!window.confirm(`Mark "${title}" as sold? This will remove it from active listings.`)) return;
+    soldMutation.mutate(propertyId);
   };
 
   return (
@@ -231,12 +252,19 @@ export default function MyPropertiesPage() {
                       </div>
                       
                       {verStatus === 'approved' && (
-                        <div className="pt-2">
+                        <div className="grid grid-cols-2 gap-2 pt-2">
                           <button
                             onClick={() => navigate(`/seller/auctions/${property.propertyId}`)}
-                            className="w-full flex items-center justify-center gap-2 py-2 text-xs font-bold text-black bg-primary rounded-lg hover:bg-yellow-400 transition-colors"
+                            className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-black bg-primary rounded-lg hover:bg-yellow-400 transition-colors"
                           >
-                            <Gavel size={14} /> Manage Auction
+                            <Gavel size={14} /> Auction
+                          </button>
+                          <button
+                            onClick={() => handleMarkSold(property.propertyId, property.title)}
+                            disabled={soldMutation.isPending}
+                            className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                          >
+                            <CheckCircle size={14} /> Mark Sold
                           </button>
                         </div>
                       )}

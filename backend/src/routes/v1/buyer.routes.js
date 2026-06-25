@@ -27,11 +27,6 @@ router.get('/auctions', buyerController.listActiveAuctions);
 router.get('/auctions/:auctionId', buyerController.getAuction);
 router.post('/auctions/:auctionId/bid', buyerController.placeBid);
 
-// ─── Property Visits ───────────────────────────────────────────────────────────
-router.post('/visits', buyerController.scheduleVisit);
-router.get('/visits', buyerController.getVisits);
-router.put('/visits/:visitId', buyerController.updateVisit);
-router.delete('/visits/:visitId', buyerController.cancelVisit);
 
 // ─── Legal Documents ───────────────────────────────────────────────────────────
 router.get('/properties/:propertyId/documents', buyerController.getPropertyDocuments);
@@ -39,10 +34,6 @@ router.get('/properties/:propertyId/legal-report', buyerController.getLegalRepor
 
 // ─── Purchased Properties ─────────────────────────────────────────────────────
 router.get('/purchases', buyerController.getPurchases);
-
-// ─── Membership ────────────────────────────────────────────────────────────────
-router.get('/membership', buyerController.getMembership);
-router.post('/membership/upgrade', buyerController.upgradeMembership);
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 router.get('/notifications', buyerController.getNotifications);

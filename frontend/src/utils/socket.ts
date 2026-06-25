@@ -21,6 +21,13 @@ export const initSocket = (): Socket => {
   return socket;
 };
 
+export const disconnectSocket = () => {
+  if (socket) {
+    socket.disconnect();
+    socket = undefined as any;
+  }
+};
+
 export { socket };
 
 // Re-export typed emit helpers

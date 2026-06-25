@@ -97,12 +97,6 @@ const TABLE_DEFINITIONS = [
     gsis: [],
   },
 
-  // ── Visits ───────────────────────────────────────────────────────────────
-  {
-    tableName: env.DYNAMODB_VISITS_TABLE,
-    pk: 'visitId', pkType: 'S',
-    gsis: [gsi('buyerId-index', 'buyerId')],
-  },
 
   // ── Purchases ────────────────────────────────────────────────────────────
   {
@@ -111,10 +105,11 @@ const TABLE_DEFINITIONS = [
     gsis: [gsi('buyerId-index', 'buyerId')],
   },
 
-  // ── Memberships ──────────────────────────────────────────────────────────
+  // ── User Identity Documents ────────────────────────────────────────────────
   {
-    tableName: env.DYNAMODB_MEMBERSHIPS_TABLE,
+    tableName: env.DYNAMODB_USER_DOCS_TABLE,
     pk: 'userId', pkType: 'S',
+    sk: 'documentId', skType: 'S',
     gsis: [],
   },
 

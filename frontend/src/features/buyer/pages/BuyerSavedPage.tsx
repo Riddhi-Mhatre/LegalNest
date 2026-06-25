@@ -2,47 +2,28 @@ import { Heart, Scale, X, Check } from 'lucide-react';
 import { BuyerPropertyCard } from '../../../components/properties/BuyerPropertyCard';
 import { useState } from 'react';
 
-const savedProperties = [
-  {
-    propertyId: '1',
-    title: 'Modern Glass Villa',
-    city: 'Beverly Hills',
-    state: 'CA',
-    salePrice: 4500000,
-    type: 'villa',
-    listingType: 'sale',
-    images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?auto=format&fit=crop&w=800&q=80'],
-    isVerified: true,
-    verificationStatus: 'verified',
-  },
-  {
-    propertyId: '2',
-    title: 'Luxury Penthouse',
-    city: 'Manhattan',
-    state: 'NY',
-    salePrice: 8200000,
-    type: 'apartment',
-    listingType: 'sale',
-    images: ['https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'],
-    isVerified: true,
-    verificationStatus: 'verified',
-  },
-  {
-    propertyId: '3',
-    title: 'Smart Home Mansion',
-    city: 'Silicon Valley',
-    state: 'CA',
-    salePrice: 12500000,
-    type: 'house',
-    listingType: 'sale',
-    images: ['https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=800&q=80'],
-    isVerified: false,
-    verificationStatus: 'pending',
-  },
-];
+import { useQuery } from '@tanstack/react-query';
+import { getSavedProperties } from '../../../services/userService';
+import { Loader2 } from 'lucide-react';
 
 export default function BuyerSavedPage() {
   const [comparing, setComparing] = useState(false);
+  
+  const { data: savedItems = [], isLoading } = useQuery({
+    queryKey: ['savedProperties'],
+    queryFn: getSavedProperties,
+  });
+
+  const savedProperties = savedItems.map((item: any) => item.property || item.propertySnapshot).filter(Boolean);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="animate-spin text-primary" size={32} />
+      </div>
+    );
+  }
+
 
   return (
     <div className="space-y-8 animate-fade-in pb-12">
@@ -74,7 +55,7 @@ export default function BuyerSavedPage() {
             <thead>
               <tr>
                 <th className="p-4 border-b border-dark-border">Features</th>
-                {savedProperties.slice(0, 3).map(p => (
+                {savedProperties.slice(0, 3).map((p: any) => (
                   <th key={p.propertyId} className="p-4 border-b border-dark-border font-bold text-white w-1/4">
                     <img src={p.images?.[0]} className="w-full h-24 object-cover rounded mb-2" alt={p.title} />
                     {p.title}
@@ -85,15 +66,15 @@ export default function BuyerSavedPage() {
             <tbody className="divide-y divide-dark-border">
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Price</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4 font-display font-bold">₹{(p.salePrice ?? p.rentPrice ?? 0).toLocaleString()}</td>)}
+                {savedProperties.slice(0, 3).map((p: any) => <td key={p.propertyId} className="p-4 font-display font-bold">₹{(p.salePrice ?? p.rentPrice ?? 0).toLocaleString()}</td>)}
               </tr>
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Location</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4">{[p.city, p.state].filter(Boolean).join(', ')}</td>)}
+                {savedProperties.slice(0, 3).map((p: any) => <td key={p.propertyId} className="p-4">{[p.city, p.state].filter(Boolean).join(', ')}</td>)}
               </tr>
               <tr>
                 <td className="p-4 text-muted font-bold uppercase tracking-widest text-xs">Verified</td>
-                {savedProperties.slice(0, 3).map(p => <td key={p.propertyId} className="p-4">{p.isVerified ? <Check size={16} className="text-secondary" /> : <X size={16} className="text-destructive" />}</td>)}
+                {savedProperties.slice(0, 3).map((p: any) => <td key={p.propertyId} className="p-4">{p.isVerified ? <Check size={16} className="text-secondary" /> : <X size={16} className="text-destructive" />}</td>)}
               </tr>
             </tbody>
           </table>
@@ -101,9 +82,15 @@ export default function BuyerSavedPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {savedProperties.map((property) => (
-          <BuyerPropertyCard key={property.id} property={property} />
-        ))}
+        {savedProperties.length === 0 ? (
+          <div className="col-span-full text-center text-muted py-12">
+            No saved properties found.
+          </div>
+        ) : (
+          savedProperties.map((property: any) => (
+            <BuyerPropertyCard key={property.propertyId} property={property} />
+          ))
+        )}
       </div>
     </div>
   );

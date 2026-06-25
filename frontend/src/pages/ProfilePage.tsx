@@ -1,5 +1,5 @@
 import { useAuthStore } from '../store/authStore';
-import { User, Shield, BadgeCheck } from 'lucide-react';
+import { User, BadgeCheck } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 
 export default function ProfilePage() {
@@ -29,16 +29,6 @@ export default function ProfilePage() {
               <span className="inline-flex items-center gap-1 text-xs bg-dark-hover text-muted px-2 py-1 rounded-md border border-dark-border">
                 Unverified
               </span>
-            )}
-          </div>
-
-          <div className="card p-6">
-            <h3 className="font-semibold text-sm mb-4 flex items-center gap-2">
-              <Shield size={16} className="text-primary" /> Membership
-            </h3>
-            <p className="text-white capitalize mb-1">{user.membershipStatus}</p>
-            {user.membershipExpiry && (
-              <p className="text-xs text-muted">Expires: {formatDate(user.membershipExpiry)}</p>
             )}
           </div>
         </div>

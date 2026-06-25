@@ -1,4 +1,5 @@
-import { Building2, Plus, Eye, Clock, CheckCircle, BarChart2, ChevronRight, MessageSquare, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { Building2, Plus, Eye, Clock, CheckCircle, BarChart2, ChevronRight, MessageSquare, ShieldCheck, AlertCircle, X, MapPin } from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { getSellerDashboard, getSellerProperties } from '../../../services/sellerService';
@@ -21,19 +22,24 @@ const getPrice = (p: any) => {
   if (!raw) return '—';
   return `₹${Number(raw).toLocaleString('en-IN')}`;
 };
-const getStatus = (p: any) => p.verificationStatus ?? p.status ?? 'pending';
+const getStatus = (p: any) => {
+  if (p.status === 'sold') return 'sold';
+  return p.verificationStatus ?? p.status ?? 'pending';
+};
 
 const statusConfig: Record<string, { label: string; class: string }> = {
-  verified: { label: 'Approved', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  approved: { label: 'Approved', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  pending: { label: 'Pending Approval', class: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' },
+  verified: { label: 'Verified', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  approved: { label: 'Verified', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+  pending: { label: 'Verified', class: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
   rejected: { label: 'Rejected', class: 'bg-red-500/10 text-red-400 border-red-500/20' },
   draft: { label: 'Draft', class: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
+  sold: { label: 'Sold', class: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
 };
 
 export default function SellerDashboard() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
+  const [showViewersModal, setShowViewersModal] = useState(false);
 
   const {
     data: dashboard,
@@ -61,30 +67,35 @@ export default function SellerDashboard() {
       value: dashLoading ? '—' : String(dashboard?.totalProperties ?? 0),
       icon: Building2,
       color: 'text-primary',
-      link: '/seller/my-properties?filter=all',
+      onClick: () => navigate('/seller/my-properties?filter=all'),
     },
     {
-      label: 'Approved',
-      value: dashLoading ? '—' : String(dashboard?.approved ?? 0),
+      label: 'Sold Properties',
+      value: propsLoading ? '—' : String((properties as any[]).filter(p => p.status === 'sold').length),
       icon: CheckCircle,
       color: 'text-emerald-400',
-      link: '/seller/my-properties?filter=approved',
+      onClick: () => navigate('/seller/sold-properties'),
     },
     {
       label: 'Total Views',
       value: dashLoading ? '—' : String(dashboard?.totalViews ?? 0),
       icon: Eye,
       color: 'text-secondary',
-      link: '/seller/my-properties?sort=views',
+      onClick: () => setShowViewersModal(true),
     },
     {
       label: 'Total Inquiries',
       value: dashLoading ? '—' : String(totalInquiries),
       icon: MessageSquare,
       color: 'text-blue-400',
-      link: '/seller/my-properties?sort=inquiries',
+      onClick: () => navigate('/seller/chat'),
     },
   ];
+
+  // Aggregate viewers from all properties for the modal
+  const allViewers = (properties as any[])
+    .flatMap(p => p.viewers || [])
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   const trendingData = (properties as any[])
     .slice(0, 5)
@@ -130,13 +141,28 @@ export default function SellerDashboard() {
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-12 py-12 space-y-12">
 
+        {!user?.isVerified && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 -mb-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="text-red-400 shrink-0" size={24} />
+              <div>
+                <h3 className="text-red-400 font-bold">Action Required: Verify Your Identity</h3>
+                <p className="text-red-200/80 text-sm">Please upload your identity documents to become a verified seller.</p>
+              </div>
+            </div>
+            <button onClick={() => navigate('/seller/identity-documents')} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-colors whitespace-nowrap">
+              Upload Documents
+            </button>
+          </div>
+        )}
+
         {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {stats.map((stat) => (
             <div
               key={stat.label}
-              onClick={() => stat.link && navigate(stat.link)}
-              className={`relative p-6 bg-dark-card border border-dark-border rounded-2xl overflow-hidden group hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${stat.link ? 'cursor-pointer' : ''}`}
+              onClick={stat.onClick}
+              className={`relative p-6 bg-dark-card border border-dark-border rounded-2xl overflow-hidden group hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${stat.onClick ? 'cursor-pointer' : ''}`}
             >
               <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-300">
                 <stat.icon size={100} />
@@ -219,7 +245,7 @@ export default function SellerDashboard() {
                     </div>
                     <div>
                       <p className="text-sm font-bold text-white mb-1">
-                        Property {getStatus(prop) === 'approved' ? 'Approved' : 'Submitted'}
+                        Property Verified
                       </p>
                       <p className="text-xs text-muted line-clamp-1">{prop.title}</p>
                       <p className="text-xs text-muted mt-1">{new Date(prop.createdAt || Date.now()).toLocaleDateString()}</p>
@@ -260,7 +286,10 @@ export default function SellerDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {(properties as any[]).slice(0, 5).map((property: any) => {
+              {(properties as any[])
+                .filter(p => getStatus(p) !== 'sold')
+                .slice(0, 5)
+                .map((property: any) => {
                 const status = getStatus(property);
                 const cfg = statusConfig[status] ?? statusConfig.pending;
                 return (
@@ -308,6 +337,65 @@ export default function SellerDashboard() {
         </div>
 
       </div>
+
+      {/* Viewers Modal */}
+      {showViewersModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-dark-card border border-dark-border rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-dark-border flex items-center justify-between bg-black/40">
+              <div>
+                <h2 className="text-2xl font-display font-bold text-white">Recent Profile Views</h2>
+                <p className="text-sm text-muted">Users who have recently viewed your properties</p>
+              </div>
+              <button 
+                onClick={() => setShowViewersModal(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-dark-hover hover:bg-white/10 transition-colors"
+              >
+                <X size={20} className="text-white" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              {allViewers.length === 0 ? (
+                <div className="text-center py-12">
+                  <Eye size={48} className="mx-auto mb-4 text-muted opacity-20" />
+                  <h3 className="text-lg font-bold text-white mb-1">No Viewer Data Yet</h3>
+                  <p className="text-muted text-sm max-w-md mx-auto">
+                    New viewer tracking has just been enabled. Future views from logged-in users will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {allViewers.map((viewer: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-4 rounded-xl border border-dark-border bg-dark/50 hover:border-primary/30 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-dark flex items-center justify-center border border-dark-border shadow-inner">
+                          <Eye size={16} className="text-secondary" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-white text-sm">{viewer.viewerName}</p>
+                          <div className="flex items-center gap-1.5 text-xs text-muted mt-0.5">
+                            <MapPin size={10} className="text-primary" />
+                            <span className="line-clamp-1">Viewed: {viewer.propertyTitle}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted font-bold">
+                          {new Date(viewer.timestamp).toLocaleDateString()}
+                        </p>
+                        <p className="text-[10px] text-muted opacity-70">
+                          {new Date(viewer.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

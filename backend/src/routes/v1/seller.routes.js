@@ -9,6 +9,7 @@ import {
   saveDocuments,
   payPlatformFee,
   getMyPayments,
+  markSold,
 } from '../../controllers/sellerController.js';
 import * as sellerAuctionController from '../../controllers/sellerAuctionController.js';
 
@@ -23,6 +24,7 @@ router.get('/document-upload-url', getDocumentUploadUrl);
 router.patch('/properties/:id/documents', saveDocuments);
 router.post('/properties/:id/pay-fee', payPlatformFee);
 router.get('/payments', getMyPayments);
+router.post('/properties/:id/sold', markSold);
 
 // Auction management
 router.get('/auctions', sellerAuctionController.getAllSellerAuctions);

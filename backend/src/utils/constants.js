@@ -21,12 +21,3 @@ export const ROLES = {
   BUYER: 'buyer',
   SELLER: 'seller',
 };
-
-export const MEMBERSHIP_PLANS = {
-  BUYER_MONTHLY: 'buyer_monthly',
-  BUYER_QUARTERLY: 'buyer_quarterly',
-  BUYER_YEARLY: 'buyer_yearly',
-  SELLER_BASIC: 'seller_basic',
-  SELLER_PREMIUM: 'seller_premium',
-  SELLER_ENTERPRISE: 'seller_enterprise',
-};

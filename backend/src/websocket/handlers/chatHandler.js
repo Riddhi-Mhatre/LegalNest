@@ -14,6 +14,16 @@ export const chatHandler = (socket, io) => {
       const senderId = socket.userId;
       const message = await chatService.saveMessage(roomId, senderId, content);
       io.to(`chat_${roomId}`).emit('new_message', message);
+      
+      // Also notify the recipient globally
+      const room = await chatService.getRoom(roomId);
+      if (room) {
+        const recipientId = room.buyerId === senderId ? room.sellerId : room.buyerId;
+        io.to(`user_${recipientId}`).emit('chat_alert', {
+          roomId,
+          message: 'You have a new message'
+        });
+      }
     } catch (err) {
       socket.emit('chat_error', { message: err.message });
     }

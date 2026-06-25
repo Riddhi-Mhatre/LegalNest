@@ -37,10 +37,3 @@ export const sendAuctionWinnerEmail = (to, propertyName) =>
     subject: '🏆 Congratulations! You won the auction',
     html: `<p>You are the highest bidder for <strong>${propertyName}</strong>. Admin will unlock the chat shortly.</p>`,
   });
-
-export const sendMembershipExpiryEmail = (to, name, expiryDate) =>
-  sendEmail({
-    to,
-    subject: '⚠️ Your GharBid membership is expiring',
-    html: `<p>Hi ${name}, your membership expires on ${expiryDate}. Renew now to continue accessing listings.</p>`,
-  });

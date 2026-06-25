@@ -12,9 +12,9 @@ import propertyRoutes from './routes/v1/property.routes.js';
 import auctionRoutes from './routes/v1/auction.routes.js';
 import userRoutes from './routes/v1/user.routes.js';
 import chatRoutes from './routes/v1/chat.routes.js';
-import membershipRoutes from './routes/v1/membership.routes.js';
 import sellerRoutes from './routes/v1/seller.routes.js';
 import buyerRoutes from './routes/v1/buyer.routes.js';
+import inquiryRoutes from './routes/v1/inquiry.routes.js';
 
 export const app = express();
 
@@ -37,9 +37,9 @@ app.use('/v1/properties', propertyRoutes);
 app.use('/v1/auctions', auctionRoutes);
 app.use('/v1/users', userRoutes);
 app.use('/v1/chat', chatRoutes);
-app.use('/v1/memberships', membershipRoutes);
 app.use('/v1/seller', sellerRoutes);
 app.use('/v1/buyer', buyerRoutes);
+app.use('/v1/inquiries', inquiryRoutes);
 
 // ─── Global Error Handler ──────────────────────────────────
 app.use(errorHandler);

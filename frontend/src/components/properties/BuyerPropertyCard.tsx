@@ -1,6 +1,10 @@
 import { Heart, Scale, ShieldCheck, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatShortPrice } from '../../utils/formatters';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getSavedProperties, saveProperty, removeSavedProperty } from '../../services/userService';
+import { useAuthStore } from '../../store/authStore';
+import { toast } from 'sonner';
 
 // Accepts the raw DynamoDB property shape returned by GET /v1/properties
 interface Property {
@@ -10,7 +14,7 @@ interface Property {
   city?: string;
   state?: string;
   salePrice?: number;
-  rentPrice?: number;
+  price?: number;
   type: string;
   listingType?: string;
   images?: string[];
@@ -27,8 +31,43 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?a
 export function BuyerPropertyCard({ property }: BuyerPropertyCardProps) {
   const image = property.images?.[0] || PLACEHOLDER;
   const location = [property.city, property.state].filter(Boolean).join(', ') || property.address || 'Location not specified';
-  const price = property.salePrice ?? property.rentPrice ?? 0;
+  const price = property.salePrice ?? property.price ?? 0;
   const verified = property.isVerified || property.verificationStatus === 'verified';
+
+  const queryClient = useQueryClient();
+  const { user } = useAuthStore();
+  const isBuyer = user?.role === 'buyer';
+
+  const { data: savedItems = [] } = useQuery({
+    queryKey: ['savedProperties'],
+    queryFn: getSavedProperties,
+    enabled: isBuyer,
+  });
+
+  const isSaved = savedItems.some((item: any) => item.propertyId === property.propertyId);
+
+  const { mutate: toggleSave, isPending } = useMutation({
+    mutationFn: async () => {
+      if (!isBuyer) throw new Error('Must be a logged in buyer');
+      if (isSaved) {
+        await removeSavedProperty(property.propertyId);
+      } else {
+        await saveProperty(property.propertyId);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['savedProperties'] });
+      toast.success(isSaved ? 'Removed from saved properties' : 'Property saved successfully');
+    },
+    onError: (err: any) => {
+      if (err.response?.status === 409) {
+        // Already saved in backend, sync frontend state
+        queryClient.invalidateQueries({ queryKey: ['savedProperties'] });
+      } else {
+        toast.error(err.response?.data?.error?.message || err.message || 'Failed to update saved properties');
+      }
+    }
+  });
 
   return (
     <div className="bg-dark-card border border-dark-border rounded-xl overflow-hidden group hover:shadow-gold transition-all duration-500 hover:-translate-y-1 relative">
@@ -56,8 +95,13 @@ export function BuyerPropertyCard({ property }: BuyerPropertyCardProps) {
 
         {/* Hover Actions */}
         <div className="absolute top-3 right-3 flex flex-col gap-2 translate-x-10 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-300">
-          <button className="p-2 bg-black/60 hover:bg-primary text-white hover:text-black rounded-full backdrop-blur-sm transition-colors shadow-lg" title="Save Property">
-            <Heart size={16} />
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); if(isPending) return; toggleSave(); }}
+            disabled={isPending}
+            className={`p-2 bg-black/60 hover:bg-primary text-white hover:text-black rounded-full backdrop-blur-sm transition-colors shadow-lg ${isSaved ? 'text-primary' : ''} ${isPending ? 'opacity-50 cursor-not-allowed' : ''}`} 
+            title="Save Property"
+          >
+            <Heart size={16} className={isSaved ? 'fill-primary text-primary' : ''} />
           </button>
           <button className="p-2 bg-black/60 hover:bg-accent text-white rounded-full backdrop-blur-sm transition-colors shadow-lg" title="Compare">
             <Scale size={16} />
@@ -75,7 +119,6 @@ export function BuyerPropertyCard({ property }: BuyerPropertyCardProps) {
           </div>
           <div className="text-primary font-display font-black text-xl drop-shadow-lg ml-2 shrink-0">
             {formatShortPrice(price)}
-            {property.listingType === 'rent' && <span className="text-xs font-normal text-gray-300">/mo</span>}
           </div>
         </div>
       </div>

@@ -7,9 +7,9 @@ const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient({ region: process.
 
 const seedUsers = async () => {
   const users = [
-    { userId: uuid(), email: 'admin@gharbid.com', name: 'Admin User', role: 'admin', isVerified: true, membershipStatus: 'active', cognitoSub: 'admin-cognito-sub', createdAt: new Date().toISOString() },
-    { userId: uuid(), email: 'buyer@gharbid.com', name: 'Test Buyer', role: 'buyer', isVerified: true, membershipStatus: 'active', cognitoSub: 'buyer-cognito-sub', createdAt: new Date().toISOString() },
-    { userId: uuid(), email: 'seller@gharbid.com', name: 'Test Seller', role: 'seller', isVerified: true, membershipStatus: 'active', cognitoSub: 'seller-cognito-sub', createdAt: new Date().toISOString() },
+    { userId: uuid(), email: 'admin@gharbid.com', name: 'Admin User', role: 'admin', isVerified: true, cognitoSub: 'admin-cognito-sub', createdAt: new Date().toISOString() },
+    { userId: uuid(), email: 'buyer@gharbid.com', name: 'Test Buyer', role: 'buyer', isVerified: true, cognitoSub: 'buyer-cognito-sub', createdAt: new Date().toISOString() },
+    { userId: uuid(), email: 'seller@gharbid.com', name: 'Test Seller', role: 'seller', isVerified: true, cognitoSub: 'seller-cognito-sub', createdAt: new Date().toISOString() },
   ];
 
   for (const user of users) {

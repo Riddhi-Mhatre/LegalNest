@@ -7,8 +7,8 @@ import { useAuctionStore } from '../../store/auctionStore';
 import { useAuthStore } from '../../store/authStore';
 import { placeBid } from '../../services/auctionService';
 import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
-import { TrendingUp, Zap, ShieldAlert } from 'lucide-react';
+
+import { TrendingUp, Zap } from 'lucide-react';
 
 interface BidPanelProps {
   auctionId: string;
@@ -23,9 +23,6 @@ export const BidPanel = ({ auctionId }: BidPanelProps) => {
   const increment = currentAuction?.bidIncrement ?? 10_000;
   const minBid = currentBid + increment;
 
-  // Membership validation
-  const plan = user?.membershipPlan?.toLowerCase() ?? 'basic';
-  const hasAccess = plan === 'premium' || plan === 'elite' || plan === 'pro' || plan === 'pro bidder' || plan === 'elite investor';
 
   const { register, handleSubmit, reset, setError, formState: { errors } } = useForm<BidFormData>({
     resolver: zodResolver(bidSchema),
@@ -35,9 +32,7 @@ export const BidPanel = ({ auctionId }: BidPanelProps) => {
     if (!user) {
       return toast.error('Please log in to place a bid');
     }
-    if (!hasAccess) {
-      return toast.error('Upgrade membership to bid');
-    }
+
     if (data.amount < minBid) {
       setError('amount', { type: 'manual', message: `Bid must be at least ${formatPrice(minBid)}` });
       return;
@@ -55,27 +50,6 @@ export const BidPanel = ({ auctionId }: BidPanelProps) => {
     }
   };
 
-  if (user?.role === 'buyer' && !hasAccess) {
-    return (
-      <div className="bg-dark-card border border-primary/20 rounded-xl p-6 text-center space-y-4 shadow-xl">
-        <div className="w-12 h-12 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto">
-          <ShieldAlert size={20} className="text-primary" />
-        </div>
-        <div>
-          <h3 className="text-white font-bold text-sm uppercase tracking-wider">Premium Access Required</h3>
-          <p className="text-xs text-muted mt-2 leading-relaxed">
-            Upgrade to Premium or Elite Membership to participate in live auctions.
-          </p>
-        </div>
-        <Link 
-          to="/buyer/membership" 
-          className="btn-primary w-full inline-flex items-center justify-center gap-2 py-3 rounded-lg font-bold text-xs uppercase tracking-wider"
-        >
-          Upgrade Membership
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="card-gold p-5 space-y-4 shadow-2xl" role="form" aria-label="Place a bid">

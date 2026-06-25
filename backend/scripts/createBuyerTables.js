@@ -58,23 +58,6 @@ const tables = [
     ],
   },
 
-  // PropertyVisits – PK: visitId; GSI: buyerId
-  {
-    TableName: process.env.DYNAMODB_VISITS_TABLE || 'LegalNest-Visits',
-    BillingMode: 'PAY_PER_REQUEST',
-    KeySchema: [{ AttributeName: 'visitId', KeyType: 'HASH' }],
-    AttributeDefinitions: [
-      { AttributeName: 'visitId', AttributeType: 'S' },
-      { AttributeName: 'buyerId', AttributeType: 'S' },
-    ],
-    GlobalSecondaryIndexes: [
-      {
-        IndexName: 'buyerId-index',
-        KeySchema: [{ AttributeName: 'buyerId', KeyType: 'HASH' }],
-        Projection: { ProjectionType: 'ALL' },
-      },
-    ],
-  },
 
   // PurchasedProperties – PK: purchaseId; GSI: buyerId
   {
@@ -92,14 +75,6 @@ const tables = [
         Projection: { ProjectionType: 'ALL' },
       },
     ],
-  },
-
-  // Memberships – PK: userId (one record per user)
-  {
-    TableName: process.env.DYNAMODB_MEMBERSHIPS_TABLE || 'LegalNest-Memberships',
-    BillingMode: 'PAY_PER_REQUEST',
-    KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
-    AttributeDefinitions: [{ AttributeName: 'userId', AttributeType: 'S' }],
   },
 ];
 

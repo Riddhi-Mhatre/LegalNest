@@ -13,15 +13,12 @@ export const ROUTES = {
   BUYER_AUCTIONS: '/buyer/auctions',
   BUYER_BIDS: '/buyer/bids',
   BUYER_SAVED: '/buyer/saved',
-  BUYER_VISITS: '/buyer/visits',
   BUYER_LEGAL: '/buyer/legal-documents',
   BUYER_PURCHASES: '/buyer/purchases',
-  BUYER_MEMBERSHIP: '/buyer/membership',
   BUYER_PROFILE: '/buyer/profile',
   SELLER_DASHBOARD: '/seller/dashboard',
   CHAT: '/chat',
   PROFILE: '/profile',
-  MEMBERSHIP: '/membership',
 } as const;
 
 export const AMENITIES = [

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { createProperty } from '../../../services/propertyService';
 import { uploadFileToS3 } from '../../../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
-  Upload, ChevronRight, ChevronLeft, Loader2, X
+  Upload, ChevronRight, ChevronLeft, Loader2, X, AlertCircle
 } from 'lucide-react';
 
 
@@ -25,21 +25,22 @@ const inputClass =
   'w-full bg-black border border-dark-border rounded-lg px-4 py-3 text-white placeholder-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary transition-all';
 const labelClass = 'block text-xs text-muted font-bold uppercase tracking-wider mb-2';
 
+type PincodeStatus = 'idle' | 'loading' | 'success' | 'error';
+
 export default function AddPropertyPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [pincodeStatus, setPincodeStatus] = useState<PincodeStatus>('idle');
+  const [pincodePostOfficeName, setPincodePostOfficeName] = useState('');
+  const [locationAutoFilled, setLocationAutoFilled] = useState(false);
 
 
   const [form, setForm] = useState({
     title: '',
     description: '',
     type: 'apartment',
-    listingType: 'sale' as 'sale' | 'rent',
     salePrice: '',
-    rentPrice: '',
-    securityDeposit: '',
-    rentPeriod: 'monthly' as 'monthly' | 'yearly',
     bedrooms: '',
     bathrooms: '',
     area: '',
@@ -53,6 +54,54 @@ export default function AddPropertyPage() {
 
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
+
+  const fetchLocationByPincode = useCallback(async (pincode: string) => {
+    if (pincode.length !== 6 || !/^\d{6}$/.test(pincode)) {
+      // Reset if pincode is cleared/invalid
+      if (locationAutoFilled) {
+        setForm(prev => ({ ...prev, city: '', state: '' }));
+        setLocationAutoFilled(false);
+        setPincodePostOfficeName('');
+      }
+      setPincodeStatus('idle');
+      return;
+    }
+
+    setPincodeStatus('loading');
+    try {
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pincode}`);
+      const data = await res.json();
+      const result = data[0];
+
+      if (result.Status === 'Success' && result.PostOffice?.length > 0) {
+        const postOffice = result.PostOffice[0];
+        setForm(prev => ({
+          ...prev,
+          city: postOffice.District || postOffice.Block || '',
+          state: postOffice.State || '',
+        }));
+        setPincodePostOfficeName(postOffice.Name);
+        setLocationAutoFilled(true);
+        setPincodeStatus('success');
+      } else {
+        setForm(prev => ({ ...prev, city: '', state: '' }));
+        setLocationAutoFilled(false);
+        setPincodePostOfficeName('');
+        setPincodeStatus('error');
+      }
+    } catch {
+      setForm(prev => ({ ...prev, city: '', state: '' }));
+      setLocationAutoFilled(false);
+      setPincodePostOfficeName('');
+      setPincodeStatus('error');
+    }
+  }, [locationAutoFilled]);
+
+  const handlePincodeChange = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 6);
+    set('pincode', digits);
+    fetchLocationByPincode(digits);
+  };
 
   const toggleAmenity = (a: string) =>
     set(
@@ -100,23 +149,16 @@ export default function AddPropertyPage() {
     title: form.title,
     description: form.description,
     type: form.type,
-    listingType: form.listingType,
-
-    ...(form.salePrice ? { salePrice: Number(form.salePrice) } : {}),
-    ...(form.rentPrice ? { rentPrice: Number(form.rentPrice) } : {}),
-    ...(form.securityDeposit ? { securityDeposit: Number(form.securityDeposit) } : {}),
-
-    rentPeriod: form.rentPeriod,
-
+    listingType: 'sale',
+    salePrice: Number(form.salePrice),
+    price: Number(form.salePrice),
     bedrooms: (form.type === 'plot' || form.type === 'commercial') ? 0 : Number(form.bedrooms),
     bathrooms: (form.type === 'plot' || form.type === 'commercial') ? 0 : Number(form.bathrooms),
     area: Number(form.area),
-
     address: form.address,
     city: form.city,
     state: form.state,
     pincode: form.pincode,
-
     amenities: form.amenities,
     images: form.images,
   }),
@@ -133,10 +175,7 @@ export default function AddPropertyPage() {
 
   const isStepValid = () => {
     if (step === 1) return form.title.trim() && form.description.trim();
-    if (step === 2)
-      return form.listingType === 'sale'
-        ? !!form.salePrice
-        : !!form.rentPrice;
+    if (step === 2) return !!form.salePrice;
     if (step === 3) return form.city.trim() && form.state.trim() && form.address.trim();
     return true;
   };
@@ -210,18 +249,6 @@ export default function AddPropertyPage() {
                     <option value="commercial">Commercial</option>
                   </select>
                 </div>
-                <div>
-                  <label className={labelClass}>Listing Type</label>
-                  <div className="flex bg-black border border-dark-border rounded-lg overflow-hidden">
-                    {(['sale', 'rent'] as const).map(t => (
-                      <button key={t} onClick={() => set('listingType', t)}
-                        className={`flex-1 py-3 font-bold capitalize transition-all ${form.listingType === t ? 'bg-secondary text-black' : 'text-muted hover:text-white'}`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               {form.type !== 'plot' && form.type !== 'commercial' ? (
@@ -253,45 +280,16 @@ export default function AddPropertyPage() {
             <div className="space-y-6">
               <h2 className="text-xl font-display font-bold">Pricing Details</h2>
 
-              {form.listingType === 'sale' ? (
-                <div>
-                  <label className={labelClass}>Sale Price (₹)</label>
-                  <input className={inputClass} type="number" min="0" placeholder="e.g. 8500000" value={form.salePrice} onChange={e => set('salePrice', e.target.value)} />
-                  <p className="text-xs text-muted mt-1">Enter in rupees (e.g. 85,00,000 = 8500000)</p>
-                </div>
-              ) : (
-                <>
-                  <div>
-                    <label className={labelClass}>Monthly Rent (₹)</label>
-                    <input className={inputClass} type="number" min="0" placeholder="e.g. 35000" value={form.rentPrice} onChange={e => set('rentPrice', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Security Deposit (₹)</label>
-                    <input className={inputClass} type="number" min="0" placeholder="e.g. 100000" value={form.securityDeposit} onChange={e => set('securityDeposit', e.target.value)} />
-                  </div>
-                  <div>
-                    <label className={labelClass}>Rent Period</label>
-                    <div className="flex gap-4">
-                      {(['monthly', 'yearly'] as const).map(p => (
-                        <button key={p} onClick={() => set('rentPeriod', p)}
-                          className={`flex-1 py-3 rounded-lg border font-bold capitalize transition-all ${form.rentPeriod === p ? 'bg-secondary/20 border-secondary text-secondary' : 'border-dark-border text-muted hover:text-white'}`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
+              <div>
+                <label className={labelClass}>Sale Price (₹)</label>
+                <input className={inputClass} type="number" min="0" placeholder="e.g. 8500000" value={form.salePrice} onChange={e => set('salePrice', e.target.value)} />
+                <p className="text-xs text-muted mt-1">Enter in rupees (e.g. 85,00,000 = 8500000)</p>
+              </div>
 
               <div className="bg-secondary/5 border border-secondary/20 rounded-xl p-5">
                 <p className="text-sm text-secondary font-bold mb-1">Platform Listing Fee</p>
-                <p className="text-2xl font-display font-black text-white">
-                  ₹{form.listingType === 'sale' ? '999' : '299'}
-                </p>
-                <p className="text-xs text-muted mt-1">
-                  One-time fee to publish your listing immediately.
-                </p>
+                <p className="text-2xl font-display font-black text-white">₹999</p>
+                <p className="text-xs text-muted mt-1">One-time fee to publish your listing immediately.</p>
               </div>
             </div>
           )}
@@ -306,21 +304,86 @@ export default function AddPropertyPage() {
                 <input className={inputClass} placeholder="Street address, building name, floor..." value={form.address} onChange={e => set('address', e.target.value)} />
               </div>
 
+              {/* Pincode with auto-fill */}
+              <div>
+                <label className={labelClass}>Pincode</label>
+                <div className="relative">
+                  <input
+                    className={`${inputClass} pr-12 ${
+                      pincodeStatus === 'error' ? 'border-red-500 focus:border-red-500 focus:ring-red-500' :
+                      pincodeStatus === 'success' ? 'border-green-500 focus:border-green-500 focus:ring-green-500' : ''
+                    }`}
+                    placeholder="e.g. 400050"
+                    maxLength={6}
+                    value={form.pincode}
+                    onChange={e => handlePincodeChange(e.target.value)}
+                    inputMode="numeric"
+                  />
+                  <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                    {pincodeStatus === 'loading' && (
+                      <Loader2 size={18} className="text-secondary animate-spin" />
+                    )}
+                    {pincodeStatus === 'success' && (
+                      <Check size={18} className="text-green-400" />
+                    )}
+                    {pincodeStatus === 'error' && (
+                      <AlertCircle size={18} className="text-red-400" />
+                    )}
+                  </div>
+                </div>
+                {pincodeStatus === 'success' && pincodePostOfficeName && (
+                  <p className="text-xs text-green-400 mt-1 flex items-center gap-1">
+                    <Check size={12} />
+                    Auto-filled from <span className="font-semibold">{pincodePostOfficeName}</span> post office
+                  </p>
+                )}
+                {pincodeStatus === 'error' && (
+                  <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} />
+                    Invalid pincode. Please check and try again.
+                  </p>
+                )}
+                {pincodeStatus === 'loading' && (
+                  <p className="text-xs text-muted mt-1">Looking up location...</p>
+                )}
+              </div>
+
+              {/* City & State - auto-filled from pincode */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelClass}>City</label>
-                  <input className={inputClass} placeholder="e.g. Mumbai" value={form.city} onChange={e => set('city', e.target.value)} />
+                  <label className={labelClass}>
+                    City
+                    {locationAutoFilled && (
+                      <span className="ml-2 text-green-400 normal-case font-normal tracking-normal">• auto-filled</span>
+                    )}
+                  </label>
+                  <input
+                    className={`${inputClass} ${
+                      locationAutoFilled ? 'border-green-500/40 bg-green-900/10 text-green-300' : ''
+                    }`}
+                    placeholder="e.g. Mumbai"
+                    value={form.city}
+                    onChange={e => { set('city', e.target.value); setLocationAutoFilled(false); }}
+                  />
                 </div>
                 <div>
-                  <label className={labelClass}>State</label>
-                  <input className={inputClass} placeholder="e.g. Maharashtra" value={form.state} onChange={e => set('state', e.target.value)} />
+                  <label className={labelClass}>
+                    State
+                    {locationAutoFilled && (
+                      <span className="ml-2 text-green-400 normal-case font-normal tracking-normal">• auto-filled</span>
+                    )}
+                  </label>
+                  <input
+                    className={`${inputClass} ${
+                      locationAutoFilled ? 'border-green-500/40 bg-green-900/10 text-green-300' : ''
+                    }`}
+                    placeholder="e.g. Maharashtra"
+                    value={form.state}
+                    onChange={e => { set('state', e.target.value); setLocationAutoFilled(false); }}
+                  />
                 </div>
               </div>
 
-              <div>
-                <label className={labelClass}>Pincode</label>
-                <input className={inputClass} placeholder="e.g. 400050" maxLength={6} value={form.pincode} onChange={e => set('pincode', e.target.value)} />
-              </div>
             </div>
           )}
 

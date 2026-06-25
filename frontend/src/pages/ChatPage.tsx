@@ -1,18 +1,38 @@
-import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { getRooms, getMessages } from '../services/chatService';
+import { getSellerInquiries, acceptInquiry, rejectInquiry } from '../services/inquiryService';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';
 import { ChatWindow } from '../components/chat/ChatWindow';
-import { MeetingRequest } from '../components/chat/MeetingRequest';
 import { Loader } from '../components/common/Loader';
-import { MessageSquare, Users } from 'lucide-react';
+import {
+  MessageSquare, Users, Clock, CheckCircle, XCircle,
+  Building2, User, Inbox, ChevronRight, X
+} from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatters';
+import { toast } from 'sonner';
 
 export default function ChatPage() {
   const { user } = useAuthStore();
-  const { rooms, activeRoomId, setRooms, setActiveRoom, setMessages } = useChatStore();
+  const { rooms, activeRoomId, setRooms, setActiveRoom, setMessages, setHasUnreadAlerts } = useChatStore();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const isSeller = user?.role === 'seller';
 
+  useEffect(() => {
+    // Clear unread indicator when user visits the chat page
+    setHasUnreadAlerts(false);
+  }, [setHasUnreadAlerts]);
+
+  // Tab state: 'inquiries' (seller) | 'messages' (both)
+  const [activeTab, setActiveTab] = useState<'inquiries' | 'messages'>(
+    isSeller ? 'inquiries' : 'messages'
+  );
+
+  // ─── Fetch chat rooms ──────────────────────────────────────
   const { data: fetchedRooms, isLoading: loadingRooms } = useQuery({
     queryKey: ['chat', 'rooms'],
     queryFn: getRooms,
@@ -22,83 +42,313 @@ export default function ChatPage() {
     if (fetchedRooms) setRooms(fetchedRooms);
   }, [fetchedRooms, setRooms]);
 
+  // Open room from URL param (e.g. after inquiry accepted)
+  useEffect(() => {
+    const roomId = searchParams.get('roomId');
+    if (roomId) {
+      setActiveRoom(roomId);
+      setActiveTab('messages');
+    }
+  }, [searchParams, setActiveRoom]);
+
   useEffect(() => {
     if (activeRoomId) {
       getMessages(activeRoomId).then(msgs => setMessages(activeRoomId, msgs));
     }
   }, [activeRoomId, setMessages]);
 
+  // ─── Seller inquiries ──────────────────────────────────────
+  const { data: inquiries = [], isLoading: loadingInquiries } = useQuery({
+    queryKey: ['inquiries', 'seller'],
+    queryFn: getSellerInquiries,
+    enabled: isSeller,
+  });
+
+  const pendingInquiries = (inquiries as any[]).filter(i => i.status === 'pending');
+  const historyInquiries = (inquiries as any[]).filter(i => i.status !== 'pending');
+
+  const acceptMutation = useMutation({
+    mutationFn: acceptInquiry,
+    onSuccess: (data) => {
+      toast.success('Inquiry accepted! Chat is now open.');
+      queryClient.invalidateQueries({ queryKey: ['inquiries', 'seller'] });
+      queryClient.invalidateQueries({ queryKey: ['chat', 'rooms'] });
+      // Auto-open the chat
+      if (data?.room?.roomId) {
+        setActiveRoom(data.room.roomId);
+        setActiveTab('messages');
+      }
+    },
+    onError: () => toast.error('Failed to accept inquiry.'),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: rejectInquiry,
+    onSuccess: () => {
+      toast.success('Inquiry rejected.');
+      queryClient.invalidateQueries({ queryKey: ['inquiries', 'seller'] });
+    },
+    onError: () => toast.error('Failed to reject inquiry.'),
+  });
+
+  // ─── Status badge helper ───────────────────────────────────
+  const statusBadge = (status: string) => {
+    const map: Record<string, { icon: any; cls: string; label: string }> = {
+      pending:  { icon: Clock,        cls: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', label: 'Pending' },
+      accepted: { icon: CheckCircle,  cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', label: 'Accepted' },
+      rejected: { icon: XCircle,      cls: 'text-red-400 bg-red-500/10 border-red-500/20', label: 'Declined' },
+    };
+    const cfg = map[status] ?? map.pending;
+    const Icon = cfg.icon;
+    return (
+      <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold px-2.5 py-1 rounded-full border ${cfg.cls}`}>
+        <Icon size={11} /> {cfg.label}
+      </span>
+    );
+  };
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8 h-[calc(100vh-64px)]">
-      <div className="card h-full flex overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-full md:w-80 border-r border-dark-border flex flex-col bg-dark-card/50">
-          <div className="p-4 border-b border-dark-border">
-            <h2 className="font-display font-bold text-lg flex items-center gap-2">
-              <MessageSquare size={18} className="text-primary" />
-              Messages
-            </h2>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {loadingRooms ? (
-              <Loader size="sm" />
-            ) : rooms.length === 0 ? (
-              <div className="p-8 text-center text-muted">
-                <Users size={32} className="mx-auto mb-3 opacity-50" />
-                <p className="text-sm">No active conversations</p>
-              </div>
-            ) : (
-              rooms.map((room) => {
-                const isActive = activeRoomId === room.roomId;
-                const partner = user?.role === 'buyer' ? 'Seller' : 'Buyer';
-                return (
-                  <button
-                    key={room.roomId}
-                    onClick={() => setActiveRoom(room.roomId)}
-                    className={`w-full text-left p-4 border-b border-dark-border transition-colors hover:bg-dark-hover ${
-                      isActive ? 'bg-primary/5 border-l-4 border-l-primary' : ''
-                    }`}
-                  >
-                    <div className="flex justify-between items-start mb-1">
-                      <span className="font-semibold text-sm">{partner} - Prop #{room.transactionId.slice(-4)}</span>
-                      {room.lastMessage && (
-                        <span className="text-[10px] text-muted whitespace-nowrap ml-2">
-                          {formatRelativeTime(room.lastMessage.timestamp)}
-                        </span>
+    <div className="flex-1 flex flex-col text-white bg-dark overflow-hidden min-h-0">
+      {/* Compact Top Bar */}
+      <div className="flex-none px-4 md:px-8 py-3 border-b border-dark-border bg-dark-card flex items-center justify-between">
+        <div className="flex gap-1 bg-black border border-dark-border rounded-lg p-1 w-fit">
+          {isSeller && (
+            <button
+              onClick={() => setActiveTab('inquiries')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${
+                activeTab === 'inquiries'
+                  ? 'bg-primary text-black shadow-md'
+                  : 'text-muted hover:text-white'
+              }`}
+            >
+              <Inbox size={16} />
+              Inquiries
+              {pendingInquiries.length > 0 && (
+                <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                  {pendingInquiries.length}
+                </span>
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setActiveTab('messages')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${
+              activeTab === 'messages'
+                ? 'bg-primary text-black shadow-md'
+                : 'text-muted hover:text-white'
+            }`}
+          >
+            <MessageSquare size={16} />
+            Messages
+            {(rooms as any[]).length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-dark-hover text-white text-[10px] font-black flex items-center justify-center">
+                {(rooms as any[]).length}
+              </span>
+            )}
+          </button>
+        </div>
+        <div className="hidden md:block">
+          <p className="text-muted text-xs font-bold uppercase tracking-widest">{isSeller ? 'Seller Hub' : 'Buyer Hub'}</p>
+        </div>
+      </div>
+
+      <div className="flex-1 flex flex-col min-h-0 bg-black">
+        {/* ── INQUIRIES TAB (Seller) ── */}
+        {activeTab === 'inquiries' && isSeller && (
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 space-y-8 max-w-4xl mx-auto w-full">
+            {/* Pending */}
+            <div>
+              <h2 className="text-lg font-display font-bold text-white mb-4 flex items-center gap-2">
+                <Clock size={18} className="text-yellow-400" /> Pending Requests
+              </h2>
+              {loadingInquiries ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => <div key={i} className="h-24 bg-dark-card border border-dark-border rounded-xl animate-pulse" />)}
+                </div>
+              ) : pendingInquiries.length === 0 ? (
+                <div className="text-center py-16 border border-dashed border-dark-border rounded-2xl bg-dark-card">
+                  <Inbox size={40} className="mx-auto mb-4 text-muted opacity-20" />
+                  <p className="text-muted font-bold">No pending inquiries</p>
+                  <p className="text-xs text-muted opacity-60 mt-1">New buyer requests will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {pendingInquiries.map((inq: any) => (
+                    <div
+                      key={inq.inquiryId}
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-dark-card border border-dark-border rounded-2xl hover:border-primary/30 transition-all"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
+                          <User size={20} className="text-muted" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-white">{inq.buyerName}</p>
+                            {statusBadge(inq.status)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted">
+                            <Building2 size={12} className="text-primary" />
+                            <span>{inq.propertyTitle}</span>
+                          </div>
+                          <p className="text-[11px] text-muted opacity-60 mt-0.5">
+                            {new Date(inq.createdAt).toLocaleDateString()} · {formatRelativeTime(inq.createdAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => rejectMutation.mutate(inq.inquiryId)}
+                          disabled={rejectMutation.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm font-bold hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                        >
+                          <X size={14} /> Decline
+                        </button>
+                        <button
+                          onClick={() => acceptMutation.mutate(inq.inquiryId)}
+                          disabled={acceptMutation.isPending}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-400 transition-colors disabled:opacity-50"
+                        >
+                          <CheckCircle size={14} /> Accept
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* History */}
+            {historyInquiries.length > 0 && (
+              <div>
+                <h2 className="text-lg font-display font-bold text-white mb-4 flex items-center gap-2">
+                  <CheckCircle size={18} className="text-muted" /> History
+                </h2>
+                <div className="space-y-3">
+                  {historyInquiries.map((inq: any) => (
+                    <div
+                      key={inq.inquiryId}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-dark-card border rounded-2xl transition-all ${
+                        inq.status === 'accepted'
+                          ? 'border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer'
+                          : 'border-dark-border opacity-60'
+                      }`}
+                      onClick={() => {
+                        if (inq.status === 'accepted' && inq.roomId) {
+                          setActiveRoom(inq.roomId);
+                          setActiveTab('messages');
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
+                          <User size={20} className="text-muted" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-bold text-white">{inq.buyerName}</p>
+                            {statusBadge(inq.status)}
+                          </div>
+                          <div className="flex items-center gap-1.5 text-xs text-muted">
+                            <Building2 size={12} className="text-primary" />
+                            <span>{inq.propertyTitle}</span>
+                          </div>
+                        </div>
+                      </div>
+                      {inq.status === 'accepted' && (
+                        <div className="flex items-center gap-2 text-emerald-400 text-sm font-bold shrink-0">
+                          <MessageSquare size={16} /> Open Chat <ChevronRight size={16} />
+                        </div>
                       )}
                     </div>
-                    <p className="text-xs text-muted truncate">
-                      {room.lastMessage?.content || 'Started a conversation'}
-                    </p>
-                  </button>
-                );
-              })
+                  ))}
+                </div>
+              </div>
             )}
           </div>
-        </div>
+        )}
 
-        {/* Chat Area */}
-        <div className="hidden md:flex flex-1 flex-col">
-          {activeRoomId ? (
-            <>
-              <div className="p-4 border-b border-dark-border flex justify-between items-center bg-dark-card/80 backdrop-blur-md">
-                <h3 className="font-semibold">Secure Communication</h3>
-                <MeetingRequest roomId={activeRoomId} />
+        {/* ── MESSAGES TAB ── */}
+        {activeTab === 'messages' && (
+          <div className="flex-1 flex gap-4 min-h-0 px-2 md:px-4 py-2 md:py-4">
+            {/* Room list */}
+            <div className="w-64 shrink-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-dark-border">
+                <h3 className="font-display font-bold text-sm uppercase tracking-wider text-muted">Conversations</h3>
               </div>
-              <div className="flex-1 overflow-hidden relative">
-                <ChatWindow roomId={activeRoomId} />
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                {loadingRooms ? (
+                  <div className="p-4 space-y-3">
+                    {[1, 2, 3].map(i => <div key={i} className="h-16 bg-dark-border/40 rounded-xl animate-pulse" />)}
+                  </div>
+                ) : (rooms as any[]).length === 0 ? (
+                  <div className="p-8 text-center text-muted">
+                    <Users size={32} className="mx-auto mb-3 opacity-30" />
+                    <p className="text-sm font-bold">No conversations yet</p>
+                    <p className="text-xs opacity-60 mt-1">
+                      {isSeller ? 'Accept an inquiry to start chatting.' : 'Express interest in a property to get started.'}
+                    </p>
+                  </div>
+                ) : (
+                  (rooms as any[]).map((room: any) => {
+                    const isActive = activeRoomId === room.roomId;
+                    const otherParty = isSeller ? room.buyerName : 'Seller';
+                    const label = room.propertyTitle || `Property Chat`;
+                    return (
+                      <button
+                        key={room.roomId}
+                        onClick={() => setActiveRoom(room.roomId)}
+                        className={`w-full text-left p-4 border-b border-dark-border transition-colors hover:bg-dark-hover ${
+                          isActive ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
+                            <User size={16} className="text-muted" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-white truncate">{otherParty}</p>
+                            <p className="text-xs text-muted truncate">{label}</p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
               </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-dark-hover flex items-center justify-center mb-4">
-                <MessageSquare size={32} />
-              </div>
-              <h3 className="text-lg font-display font-semibold mb-2 text-white">Your Secure Inbox</h3>
-              <p className="text-sm max-w-md">Select a conversation to start chatting. All messages are encrypted and monitored for your safety.</p>
             </div>
-          )}
-        </div>
+
+            {/* Chat area */}
+            <div className="flex-1 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+              {activeRoomId ? (
+                <>
+                  <div className="p-4 border-b border-dark-border bg-black/20 backdrop-blur-sm flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center">
+                      <MessageSquare size={16} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-white">Secure Conversation</p>
+                      <p className="text-xs text-muted">End-to-end monitored for your safety</p>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <ChatWindow roomId={activeRoomId} />
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center text-muted p-8 text-center">
+                  <div className="w-20 h-20 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center mb-6">
+                    <MessageSquare size={36} className="text-primary/40" />
+                  </div>
+                  <h3 className="text-xl font-display font-bold mb-2 text-white">Your Secure Inbox</h3>
+                  <p className="text-sm max-w-sm">
+                    Select a conversation from the left to start chatting. All messages are monitored for your safety.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

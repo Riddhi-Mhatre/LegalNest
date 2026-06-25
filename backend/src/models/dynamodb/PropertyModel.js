@@ -46,13 +46,14 @@ export const queryProperties = async (filters) => {
   const items = await dynamo.scanItems(TABLE);
   return items.filter(p => {
     if (filters.type && p.type !== filters.type) return false;
-    const price = p.salePrice ?? p.rentPrice ?? p.price ?? 0;
+    const price = p.salePrice ?? p.price ?? 0;
     if (filters.minPrice && price < filters.minPrice) return false;
     if (filters.maxPrice && price > filters.maxPrice) return false;
 
     // Status filter: accept 'approved' status OR 'verified' verificationStatus
     // so both auto-approved seller properties and legacy demo properties appear
     if (filters.status) {
+      if (p.status === 'sold') return false;
       const isApprovedByStatus         = p.status === 'approved';
       const isApprovedByVerification   = p.verificationStatus === 'verified' || p.verificationStatus === 'approved';
       if (!isApprovedByStatus && !isApprovedByVerification) return false;

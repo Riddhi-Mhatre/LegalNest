@@ -2,7 +2,9 @@ import { Link, useLocation } from 'react-router-dom';
 
 export const Footer = () => {
   const location = useLocation();
-  if (location.pathname.startsWith('/buyer')) return null;
+  if (location.pathname.startsWith('/buyer') || location.pathname.startsWith('/seller')) {
+    return null;
+  }
 
   return (
     <footer className="border-t border-dark-border bg-dark-card mt-auto hidden md:block">
@@ -18,7 +20,6 @@ export const Footer = () => {
         <ul className="space-y-2 text-muted text-sm">
           <li><Link to="/properties" className="hover:text-primary transition-colors">Properties</Link></li>
           <li><Link to="/auctions" className="hover:text-primary transition-colors">Live Auctions</Link></li>
-          <li><Link to="/membership" className="hover:text-primary transition-colors">Membership</Link></li>
         </ul>
       </div>
       <div>

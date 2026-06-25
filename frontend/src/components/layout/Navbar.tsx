@@ -15,7 +15,7 @@ export const Navbar = () => {
     navigate(ROUTES.HOME);
   };
 
-  if (location.pathname.startsWith('/buyer')) {
+  if (location.pathname.startsWith('/buyer') || location.pathname.startsWith('/seller')) {
     return null;
   }
 
@@ -46,7 +46,6 @@ export const Navbar = () => {
           <div className="hidden md:flex items-center gap-1">
             <Link to={ROUTES.PROPERTIES} className="px-4 py-2 text-sm font-medium text-white/80 rounded-lg hover:-translate-y-1 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-secondary hover:from-10% hover:to-primary hover:to-40% active:scale-95 transition-all duration-300" id="nav-properties">Properties</Link>
             <Link to="/auctions" className="px-4 py-2 text-sm font-medium text-white/80 rounded-lg hover:-translate-y-1 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-secondary hover:from-10% hover:to-primary hover:to-40% active:scale-95 transition-all duration-300" id="nav-auctions">Live Auctions</Link>
-            <Link to={ROUTES.MEMBERSHIP} className="px-4 py-2 text-sm font-medium text-white/80 rounded-lg hover:-translate-y-1 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-secondary hover:from-10% hover:to-primary hover:to-40% active:scale-95 transition-all duration-300" id="nav-membership">Membership</Link>
           </div>
 
           {/* Auth Actions */}
@@ -64,25 +63,13 @@ export const Navbar = () => {
                     aria-expanded={menuOpen}
                     aria-haspopup="true"
                   >
-                    <div className="w-7 h-7 rounded-full bg-primary/20 border border-primary/50 flex items-center justify-center">
-                      <User size={14} className="text-primary" />
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 ${user.isVerified ? 'bg-emerald-500/20 border-emerald-500' : 'bg-red-500/20 border-red-500'}`}>
+                      <User size={14} className={user.isVerified ? "text-emerald-400" : "text-red-400"} />
                     </div>
                     <span className="text-sm hidden sm:block">{user.name.split(' ')[0]}</span>
                   </button>
                   {menuOpen && (
                     <div className="absolute right-0 top-12 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 py-1 animate-slide-up">
-                      <Link to={ROUTES.PROFILE} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-profile">
-                        <User size={14} /> Profile
-                      </Link>
-                      <Link to={`/${user.role}/dashboard`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-dashboard">
-                          <Home size={14} /> Dashboard
-                        </Link>
-                      {user.role === 'seller' && (
-                        <Link to={`/seller/auctions`} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-dark-hover transition-colors" onClick={() => setMenuOpen(false)} id="nav-seller-auctions">
-                          <Gavel size={14} /> Auctions
-                        </Link>
-                      )}
-                      <hr className="border-dark-border my-1" />
                       <button onClick={handleLogout} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-dark-hover transition-colors" id="nav-logout">
                         <LogOut size={14} /> Logout
                       </button>

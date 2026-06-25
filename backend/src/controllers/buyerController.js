@@ -1,6 +1,5 @@
 import * as buyerService from '../services/buyerService.js';
-import * as visitService from '../services/visitService.js';
-import * as membershipService from '../services/membershipService.js';
+
 import * as buyerNotificationService from '../services/buyerNotificationService.js';
 import * as auctionEngine from '../services/auctionEngine.js';
 import * as AuctionModel from '../models/dynamodb/AuctionModel.js';
@@ -149,61 +148,6 @@ export const placeBid = async (req, res, next) => {
   }
 };
 
-// ─── Property Visits ───────────────────────────────────────────────────────────
-// POST /v1/buyer/visits
-export const scheduleVisit = async (req, res, next) => {
-  try {
-    const { propertyId, sellerId, date, time } = req.body;
-    if (!propertyId || !date || !time) {
-      return res.status(HTTP.BAD_REQUEST).json({
-        success: false,
-        error: { code: 'VISIT_001', message: 'propertyId, date, and time are required' },
-      });
-    }
-    const visit = await visitService.scheduleVisit({
-      buyerId: req.user.userId,
-      propertyId,
-      sellerId,
-      date,
-      time,
-    });
-    res.status(HTTP.CREATED).json({ success: true, data: visit });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// GET /v1/buyer/visits
-export const getVisits = async (req, res, next) => {
-  try {
-    const visits = await visitService.getBuyerVisits(req.user.userId);
-    res.json({ success: true, data: visits });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// PUT /v1/buyer/visits/:visitId
-export const updateVisit = async (req, res, next) => {
-  try {
-    const { visitId } = req.params;
-    const updated = await visitService.updateVisit(visitId, req.user.userId, req.body);
-    res.json({ success: true, data: updated });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// DELETE /v1/buyer/visits/:visitId
-export const cancelVisit = async (req, res, next) => {
-  try {
-    const { visitId } = req.params;
-    await visitService.cancelVisit(visitId, req.user.userId);
-    res.json({ success: true, message: 'Visit cancelled' });
-  } catch (err) {
-    next(err);
-  }
-};
 
 // ─── Legal Documents ───────────────────────────────────────────────────────────
 // GET /v1/buyer/properties/:propertyId/documents
@@ -290,33 +234,6 @@ export const getPurchases = async (req, res, next) => {
   }
 };
 
-// ─── Membership ────────────────────────────────────────────────────────────────
-// GET /v1/buyer/membership
-export const getMembership = async (req, res, next) => {
-  try {
-    const membership = await membershipService.getBuyerMembership(req.user.userId);
-    res.json({ success: true, data: membership });
-  } catch (err) {
-    next(err);
-  }
-};
-
-// POST /v1/buyer/membership/upgrade
-export const upgradeMembership = async (req, res, next) => {
-  try {
-    const { planId } = req.body;
-    if (!planId) {
-      return res.status(HTTP.BAD_REQUEST).json({
-        success: false,
-        error: { code: 'MEM_001', message: 'planId is required' },
-      });
-    }
-    const membership = await membershipService.upgradeMembership(req.user.userId, planId);
-    res.json({ success: true, data: membership });
-  } catch (err) {
-    next(err);
-  }
-};
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 // GET /v1/buyer/notifications

@@ -30,7 +30,6 @@ export const register = async (req, res, next) => {
       name,
       role,
       cognitoSub: cognitoUser.UserSub,
-      membershipStatus: 'none',
       createdAt: new Date().toISOString(),
       isVerified: false,
     };

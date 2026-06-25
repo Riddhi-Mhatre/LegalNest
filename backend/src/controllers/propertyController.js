@@ -1,4 +1,5 @@
 import * as PropertyModel from '../models/dynamodb/PropertyModel.js';
+import * as InquiryModel from '../models/dynamodb/InquiryModel.js';
 import * as s3Service from '../services/s3Service.js';
 import { generateUUID } from '../utils/helpers.js';
 import { HTTP } from '../utils/constants.js';
@@ -40,9 +41,25 @@ export const getProperty = async (req, res, next) => {
     
     // Only increment if the viewer is not the seller of this property
     if (!req.user || req.user.userId !== property.sellerId) {
+      const viewers = property.viewers || [];
+      if (req.user && req.user.userId) {
+        // Prevent duplicate recent views from same user
+        const alreadyViewedRecently = viewers.some((v) => v.viewerId === req.user.userId);
+        if (!alreadyViewedRecently) {
+          viewers.push({
+            viewerId: req.user.userId,
+            viewerName: req.user.name || 'User',
+            propertyId: property.propertyId,
+            propertyTitle: property.title,
+            timestamp: new Date().toISOString(),
+          });
+        }
+      }
+
       PropertyModel.updateProperty(req.params.id, {
         viewsCount: currentViews + 1,
         viewCount: currentViews + 1,
+        viewers,
       }).catch(() => {/* non-critical */});
     }
 
@@ -108,9 +125,61 @@ export const deleteProperty = async (req, res, next) => {
 export const expressInterest = async (req, res, next) => {
   try {
     const buyerId = req.user.userId;
+    const buyerName = req.user.name || 'Buyer';
     const { id: propertyId } = req.params;
+
+    const property = await PropertyModel.getProperty(propertyId);
+    if (!property) {
+      return res.status(HTTP.NOT_FOUND).json({
+        success: false,
+        error: { code: 'PROP_001', message: 'Property not found' },
+      });
+    }
+
+    // Prevent buyer from expressing interest in own property
+    if (property.sellerId === buyerId) {
+      return res.status(HTTP.FORBIDDEN).json({
+        success: false,
+        error: { message: 'Cannot express interest in your own property' },
+      });
+    }
+
+    // Check for existing pending inquiry
+    const existing = await InquiryModel.getPendingInquiriesForProperty(propertyId, buyerId);
+    if (existing.length > 0) {
+      return res.status(HTTP.CONFLICT).json({
+        success: false,
+        error: { code: 'INQ_001', message: 'You already have a pending inquiry for this property' },
+      });
+    }
+
+    const inquiry = {
+      inquiryId: generateUUID(),
+      buyerId,
+      buyerName,
+      sellerId: property.sellerId,
+      propertyId,
+      propertyTitle: property.title,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    await InquiryModel.createInquiry(inquiry);
+
+    // Also track in the property's interestedBuyers for backward compat
     await PropertyModel.addInterest(propertyId, buyerId);
-    res.json({ success: true, data: { message: 'Interest expressed successfully.' } });
+
+    // Notify the seller
+    import('../websocket/server.js').then(({ io }) => {
+      if (io) {
+        io.to(`user_${property.sellerId}`).emit('inquiry_alert', {
+          inquiryId: inquiry.inquiryId,
+          message: 'You have a new property inquiry'
+        });
+      }
+    }).catch(console.error);
+
+    res.status(HTTP.CREATED).json({ success: true, data: inquiry });
   } catch (err) {
     next(err);
   }

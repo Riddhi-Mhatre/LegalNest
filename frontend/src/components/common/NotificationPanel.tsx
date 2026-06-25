@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, ShieldCheck, Calendar, Gavel, Check, Trash2, Loader2 } from 'lucide-react';
+import { Bell, ShieldCheck, Gavel, Check, Trash2, Loader2 } from 'lucide-react';
 import { getNotifications, markNotificationRead, deleteNotification } from '../../services/userService';
 import { formatRelativeTime } from '../../utils/formatters';
 import { toast } from 'sonner';
@@ -51,9 +51,6 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       case 'legal':
       case 'document_verified':
         return ShieldCheck;
-      case 'visit':
-      case 'visit_confirmed':
-        return Calendar;
       default:
         return Bell;
     }

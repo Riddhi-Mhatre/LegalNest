@@ -144,7 +144,7 @@ export const payPlatformFee = async (req, res, next) => {
       });
     }
 
-    const amount = property.listingType === 'sale' ? 999 : 299;
+    const amount = 999;
     const paymentId = generateUUID();
     const now = new Date().toISOString();
 
@@ -153,7 +153,7 @@ export const payPlatformFee = async (req, res, next) => {
       sellerId,
       propertyId,
       amount,
-      type: property.listingType === 'sale' ? 'sale_listing' : 'rent_listing',
+      type: 'sale_listing',
       status: 'success', // In production: integrate payment gateway
       createdAt: now,
     });
@@ -182,4 +182,28 @@ export const getMyPayments = async (req, res, next) => {
   }
 };
 
+// POST /v1/seller/properties/:id/sold
+export const markSold = async (req, res, next) => {
+  try {
+    const sellerId = req.user.userId;
+    const propertyId = req.params.id;
 
+    const property = await PropertyModel.getProperty(propertyId);
+    if (!property) {
+      return res.status(HTTP.NOT_FOUND).json({ success: false, error: { message: 'Property not found' } });
+    }
+    if (property.sellerId !== sellerId) {
+      return res.status(HTTP.FORBIDDEN).json({ success: false, error: { message: 'Access denied' } });
+    }
+
+    const updated = await PropertyModel.updateProperty(propertyId, {
+      status: 'sold',
+      verificationStatus: 'sold',
+      updatedAt: new Date().toISOString(),
+    });
+
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};

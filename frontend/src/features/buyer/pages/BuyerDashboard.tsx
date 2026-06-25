@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
-import { Heart, Gavel, ArrowRight, Trophy, Sparkles, Loader2 } from 'lucide-react';
+import { Heart, Gavel, ArrowRight, Trophy, Sparkles, Loader2, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../utils/constants';
 import { SummaryCard } from '../../../components/common/SummaryCard';
@@ -9,7 +9,7 @@ import { AuctionCard } from '../../../components/auctions/AuctionCard';
 import { BidTable } from '../../../components/auctions/BidTable';
 import { getAuctions } from '../../../services/auctionService';
 import { getProperties } from '../../../services/propertyService';
-import { getBuyerBids } from '../../../services/userService';
+import { getBuyerBids, getPurchases } from '../../../services/userService';
 
 export default function BuyerDashboard() {
   const { user } = useAuthStore();
@@ -32,7 +32,13 @@ export default function BuyerDashboard() {
     queryFn: getBuyerBids,
   });
 
-  const isLoading = liveAuctionsLoading || propsLoading || bidsLoading;
+  // 4. Fetch buyer purchases
+  const { data: purchases = [], isLoading: purchasesLoading } = useQuery({
+    queryKey: ['buyer', 'dashboard-purchases'],
+    queryFn: getPurchases,
+  });
+
+  const isLoading = liveAuctionsLoading || propsLoading || bidsLoading || purchasesLoading;
 
   // Enriched live auctions for "Trending Auctions" list
   const propertyMap = new Map((properties as any[]).map(p => [p.propertyId, p]));
@@ -80,6 +86,21 @@ export default function BuyerDashboard() {
   return (
     <div className="space-y-12 animate-fade-in pb-12">
       
+      {!user?.isVerified && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 -mb-4">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="text-red-400 shrink-0" size={24} />
+            <div>
+              <h3 className="text-red-400 font-bold">Action Required: Verify Your Identity</h3>
+              <p className="text-red-200/80 text-sm">Please upload your identity documents to become a verified buyer.</p>
+            </div>
+          </div>
+          <Link to={ROUTES.BUYER_LEGAL} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-bold transition-colors whitespace-nowrap">
+            Upload Documents
+          </Link>
+        </div>
+      )}
+
       {/* Welcome Section */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -128,6 +149,43 @@ export default function BuyerDashboard() {
           </div>
         )}
       </section>
+
+      {/* Purchased Properties */}
+      {purchases.length > 0 && (
+        <section>
+          <div className="flex items-center justify-between mb-6 border-b border-dark-border pb-4">
+            <h2 className="text-2xl font-display font-bold uppercase tracking-widest text-emerald-400">Purchased Properties</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {(purchases as any[]).map((purchase: any) => (
+              <div key={purchase.purchaseId} className="bg-dark-card border border-emerald-500/20 rounded-2xl p-5 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-colors">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-bl-full -z-10 group-hover:bg-emerald-500/10 transition-colors" />
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="font-bold text-white text-lg mb-1">{purchase.propertyTitle || 'Property'}</h3>
+                    <p className="text-emerald-400 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
+                      <CheckCircle size={12} /> Successfully Acquired
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400">
+                    <Building2 size={20} />
+                  </div>
+                </div>
+                <div className="space-y-3 mt-4 text-sm">
+                  <div className="flex justify-between border-b border-dark-border pb-2">
+                    <span className="text-muted">Purchase Date</span>
+                    <span className="text-white font-semibold">{new Date(purchase.date).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dark-border pb-2">
+                    <span className="text-muted">Transaction ID</span>
+                    <span className="text-white font-semibold truncate max-w-[120px]">{purchase.purchaseId}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Grid Layout for Auctions and Bids */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
