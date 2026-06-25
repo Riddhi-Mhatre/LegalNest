@@ -5,7 +5,7 @@ const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-south-
 
 const tables = [
   {
-    TableName: 'GharBid-Users',
+    TableName: 'LegalNest-Users',
     KeySchema: [{ AttributeName: 'userId', KeyType: 'HASH' }],
     AttributeDefinitions: [
       { AttributeName: 'userId', AttributeType: 'S' },
@@ -19,7 +19,7 @@ const tables = [
     BillingMode: 'PAY_PER_REQUEST',
   },
   {
-    TableName: 'GharBid-Properties',
+    TableName: 'LegalNest-Properties',
     KeySchema: [{ AttributeName: 'propertyId', KeyType: 'HASH' }],
     AttributeDefinitions: [
       { AttributeName: 'propertyId', AttributeType: 'S' },
@@ -41,7 +41,7 @@ const tables = [
     BillingMode: 'PAY_PER_REQUEST',
   },
   {
-    TableName: 'GharBid-Auctions',
+    TableName: 'LegalNest-Auctions',
     KeySchema: [{ AttributeName: 'auctionId', KeyType: 'HASH' }],
     AttributeDefinitions: [
       { AttributeName: 'auctionId', AttributeType: 'S' },
@@ -55,7 +55,7 @@ const tables = [
     BillingMode: 'PAY_PER_REQUEST',
   },
   {
-    TableName: 'GharBid-Bids',
+    TableName: 'LegalNest-Bids',
     KeySchema: [
       { AttributeName: 'auctionId', KeyType: 'HASH' },
       { AttributeName: 'timestamp', KeyType: 'RANGE' },
@@ -63,6 +63,28 @@ const tables = [
     AttributeDefinitions: [
       { AttributeName: 'auctionId', AttributeType: 'S' },
       { AttributeName: 'timestamp', AttributeType: 'N' },
+    ],
+    BillingMode: 'PAY_PER_REQUEST',
+  },
+  {
+    TableName: 'LegalNest-Payments',
+    KeySchema: [{ AttributeName: 'paymentId', KeyType: 'HASH' }],
+    AttributeDefinitions: [
+      { AttributeName: 'paymentId', AttributeType: 'S' },
+      { AttributeName: 'propertyId', AttributeType: 'S' },
+      { AttributeName: 'sellerId', AttributeType: 'S' },
+    ],
+    GlobalSecondaryIndexes: [
+      {
+        IndexName: 'propertyId-index',
+        KeySchema: [{ AttributeName: 'propertyId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+      },
+      {
+        IndexName: 'sellerId-index',
+        KeySchema: [{ AttributeName: 'sellerId', KeyType: 'HASH' }],
+        Projection: { ProjectionType: 'ALL' },
+      },
     ],
     BillingMode: 'PAY_PER_REQUEST',
   },
