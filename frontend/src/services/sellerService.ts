@@ -142,6 +142,9 @@ export const getSellerAuction = (propertyId: string): Promise<any> =>
 export const getSellerAuctionBids = (propertyId: string): Promise<any> =>
   api.get(`/seller/properties/${propertyId}/auction/bids`).then(r => r.data.data);
 
+export const earlyCloseAuction = (propertyId: string): Promise<any> =>
+  api.post(`/seller/properties/${propertyId}/auction/early-close`).then(r => r.data.data);
+
 export const getInterestedBuyers = (propertyId: string): Promise<any> =>
   api.get(`/seller/properties/${propertyId}/interested-buyers`).then(r => r.data.data);
 

@@ -17,7 +17,7 @@ export const ChatWindow = ({ roomId }: ChatWindowProps) => {
   const { messages, addMessage, rooms } = useChatStore();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Local mirror of room so deal state updates immediately after actions
   const storeRoom = (rooms as ChatRoom[]).find(r => r.roomId === roomId);
@@ -31,14 +31,17 @@ export const ChatWindow = ({ roomId }: ChatWindowProps) => {
   const roomMessages = messages[roomId] ?? [];
   const isBuyer = user?.role === 'buyer';
   const isSeller = user?.role === 'seller';
+  const isAuctionRoom = room?.source === 'auction' || !!room?.auctionId;
 
   // Count only real user messages (not system ones) for the deal unlock threshold
   const SYSTEM_TYPES = ['deal_request', 'deal_response', 'meet_proposal', 'meet_confirmation', 'payment_buyer', 'payment_seller', 'deal_closed', 'file'];
   const realMessageCount = roomMessages.filter(m => !m.type || !SYSTEM_TYPES.includes(m.type)).length;
 
-  // Auto-scroll on new messages
+  // Auto-scroll on new messages (avoiding scrollIntoView to prevent page layout jumps)
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+    }
   }, [roomMessages]);
 
   // Socket: join room & listen for new messages
@@ -91,7 +94,7 @@ export const ChatWindow = ({ roomId }: ChatWindowProps) => {
   return (
     <div className="flex flex-col h-full" aria-label="Chat window">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-2 custom-scrollbar">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 space-y-2 custom-scrollbar">
         {roomMessages.length === 0 && (
           <p className="text-muted text-xs text-center py-8">No messages yet. Say hello!</p>
         )}
@@ -121,7 +124,6 @@ export const ChatWindow = ({ roomId }: ChatWindowProps) => {
             />
           );
         })}
-        <div ref={bottomRef} />
       </div>
 
       {/* Deal Action Bar (buyer only, before any deal) */}
@@ -139,6 +141,7 @@ export const ChatWindow = ({ roomId }: ChatWindowProps) => {
         roomId={roomId}
         disabled={isChatDisabled}
         disabledReason="This deal was declined. Chat is now closed."
+        isAuctionRoom={isAuctionRoom}
       />
     </div>
   );

@@ -1,35 +1,36 @@
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { getRooms, getMessages } from '../services/chatService';
 import { getSellerInquiries, acceptInquiry, rejectInquiry } from '../services/inquiryService';
 import { useChatStore } from '../store/chatStore';
 import { useAuthStore } from '../store/authStore';
 import { ChatWindow } from '../components/chat/ChatWindow';
-import { Loader } from '../components/common/Loader';
+
+import type { ChatRoom } from '../types/chat.types';
 import {
   MessageSquare, Users, Clock, CheckCircle, XCircle,
-  Building2, User, Inbox, ChevronRight, X
+  Building2, User, Inbox, ChevronRight, X, Gavel
 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatters';
 import { toast } from 'sonner';
+
+type ActiveTab = 'inquiries' | 'property-chats' | 'auction-chats';
 
 export default function ChatPage() {
   const { user } = useAuthStore();
   const { rooms, activeRoomId, setRooms, setActiveRoom, setMessages, setHasUnreadAlerts } = useChatStore();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isSeller = user?.role === 'seller';
 
   useEffect(() => {
-    // Clear unread indicator when user visits the chat page
     setHasUnreadAlerts(false);
   }, [setHasUnreadAlerts]);
 
-  // Tab state: 'inquiries' (seller) | 'messages' (both)
-  const [activeTab, setActiveTab] = useState<'inquiries' | 'messages'>(
-    isSeller ? 'inquiries' : 'messages'
+  // Default tab: seller starts on inquiries, buyer starts on property-chats
+  const [activeTab, setActiveTab] = useState<ActiveTab>(
+    isSeller ? 'inquiries' : 'property-chats'
   );
 
   // ─── Fetch chat rooms ──────────────────────────────────────
@@ -42,14 +43,21 @@ export default function ChatPage() {
     if (fetchedRooms) setRooms(fetchedRooms);
   }, [fetchedRooms, setRooms]);
 
-  // Open room from URL param (e.g. after inquiry accepted)
+  // Split rooms by source
+  const allRooms = rooms as ChatRoom[];
+  const propertyRooms = allRooms.filter(r => r.source !== 'auction');
+  const auctionRooms  = allRooms.filter(r => r.source === 'auction');
+
+  // Open room from URL param (e.g. after auction ends, deep-link to winner chat)
   useEffect(() => {
     const roomId = searchParams.get('roomId');
     if (roomId) {
       setActiveRoom(roomId);
-      setActiveTab('messages');
+      // Find the room to determine the correct tab
+      const targetRoom = allRooms.find(r => r.roomId === roomId);
+      setActiveTab(targetRoom?.source === 'auction' ? 'auction-chats' : 'property-chats');
     }
-  }, [searchParams, setActiveRoom]);
+  }, [searchParams, setActiveRoom, allRooms.length]);
 
   useEffect(() => {
     if (activeRoomId) {
@@ -73,10 +81,9 @@ export default function ChatPage() {
       toast.success('Inquiry accepted! Chat is now open.');
       queryClient.invalidateQueries({ queryKey: ['inquiries', 'seller'] });
       queryClient.invalidateQueries({ queryKey: ['chat', 'rooms'] });
-      // Auto-open the chat
       if (data?.room?.roomId) {
         setActiveRoom(data.room.roomId);
-        setActiveTab('messages');
+        setActiveTab('property-chats');
       }
     },
     onError: () => toast.error('Failed to accept inquiry.'),
@@ -107,21 +114,111 @@ export default function ChatPage() {
     );
   };
 
+  // ─── Room list panel (shared for property + auction tabs) ─
+  const RoomList = ({ roomsList }: { roomsList: ChatRoom[] }) => (
+    <div className="w-64 shrink-0 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-dark-border">
+        <h3 className="font-display font-bold text-sm uppercase tracking-wider text-muted">Conversations</h3>
+      </div>
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {loadingRooms ? (
+          <div className="p-4 space-y-3">
+            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-dark-border/40 rounded-xl animate-pulse" />)}
+          </div>
+        ) : roomsList.length === 0 ? (
+          <div className="p-8 text-center text-muted">
+            <Users size={32} className="mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-bold">No conversations yet</p>
+            <p className="text-xs opacity-60 mt-1">
+              {isSeller ? 'Chats will appear here.' : 'Chats will appear here once started.'}
+            </p>
+          </div>
+        ) : (
+          roomsList.map((room) => {
+            const isActive = activeRoomId === room.roomId;
+            const otherParty = isSeller ? room.buyerName : 'Seller';
+            const label = room.propertyTitle || 'Property Chat';
+            const isAuction = room.source === 'auction' || !!room.auctionId;
+            return (
+              <button
+                key={room.roomId}
+                onClick={() => setActiveRoom(room.roomId)}
+                className={`w-full text-left p-4 border-b border-dark-border transition-colors hover:bg-dark-hover ${
+                  isActive ? 'bg-primary/5 border-l-4 border-l-primary' : ''
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${
+                    isAuction
+                      ? 'bg-primary/10 border-primary/30'
+                      : 'bg-dark-hover border-dark-border'
+                  }`}>
+                    {isAuction
+                      ? <Gavel size={16} className="text-primary" />
+                      : <User size={16} className="text-muted" />
+                    }
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-white truncate">{otherParty}</p>
+                    <p className="text-xs text-muted truncate">{label}</p>
+                  </div>
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  // ─── Chat area panel (shared) ──────────────────────────────
+  const ChatArea = () => (
+    <div className="flex-1 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+      {activeRoomId ? (
+        <>
+          <div className="p-4 border-b border-dark-border bg-black/20 backdrop-blur-sm flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center">
+              <MessageSquare size={16} className="text-primary" />
+            </div>
+            <div>
+              <p className="font-bold text-sm text-white">Secure Conversation</p>
+              <p className="text-xs text-muted">End-to-end monitored for your safety</p>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ChatWindow roomId={activeRoomId} />
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center text-muted p-8 text-center">
+          <div className="w-20 h-20 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center mb-6">
+            <MessageSquare size={36} className="text-primary/40" />
+          </div>
+          <h3 className="text-xl font-display font-bold mb-2 text-white">Your Secure Inbox</h3>
+          <p className="text-sm max-w-sm">
+            Select a conversation from the left to start chatting. All messages are monitored for your safety.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="flex-1 flex flex-col text-white bg-dark overflow-hidden min-h-0">
-      {/* Compact Top Bar */}
-      <div className="flex-none px-4 md:px-8 py-3 border-b border-dark-border bg-dark-card flex items-center justify-between">
-        <div className="flex gap-1 bg-black border border-dark-border rounded-lg p-1 w-fit">
+    <div className="flex-1 flex flex-col h-full w-full bg-dark text-white overflow-hidden">
+      {/* Top Tab Bar - Guaranteed visible */}
+      <div className="shrink-0 w-full bg-dark-card border-b border-dark-border p-4 flex items-center shadow-md relative z-50">
+        <div className="flex gap-2 bg-black border border-dark-border rounded-lg p-1 w-full max-w-3xl overflow-x-auto custom-scrollbar">
+          {/* Inquiries tab — seller only */}
           {isSeller && (
             <button
               onClick={() => setActiveTab('inquiries')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
                 activeTab === 'inquiries'
                   ? 'bg-primary text-black shadow-md'
-                  : 'text-muted hover:text-white'
+                  : 'text-muted hover:text-white hover:bg-dark-hover'
               }`}
             >
-              <Inbox size={16} />
+              <Inbox size={18} />
               Inquiries
               {pendingInquiries.length > 0 && (
                 <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
@@ -130,30 +227,49 @@ export default function ChatPage() {
               )}
             </button>
           )}
+
+          {/* Property Chats tab */}
           <button
-            onClick={() => setActiveTab('messages')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-bold transition-all ${
-              activeTab === 'messages'
+            onClick={() => setActiveTab('property-chats')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
+              activeTab === 'property-chats'
                 ? 'bg-primary text-black shadow-md'
-                : 'text-muted hover:text-white'
+                : 'text-muted hover:text-white hover:bg-dark-hover'
             }`}
           >
-            <MessageSquare size={16} />
-            Messages
-            {(rooms as any[]).length > 0 && (
+            <Building2 size={18} />
+            Property Chats
+            {propertyRooms.length > 0 && (
               <span className="w-5 h-5 rounded-full bg-dark-hover text-white text-[10px] font-black flex items-center justify-center">
-                {(rooms as any[]).length}
+                {propertyRooms.length}
+              </span>
+            )}
+          </button>
+
+          {/* Auction Chats tab */}
+          <button
+            onClick={() => setActiveTab('auction-chats')}
+            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
+              activeTab === 'auction-chats'
+                ? 'bg-primary text-black shadow-md'
+                : 'text-muted hover:text-white hover:bg-dark-hover'
+            }`}
+          >
+            <Gavel size={18} />
+            Auction Chats
+            {auctionRooms.length > 0 && (
+              <span className="w-5 h-5 rounded-full bg-dark-hover text-white text-[10px] font-black flex items-center justify-center">
+                {auctionRooms.length}
               </span>
             )}
           </button>
         </div>
-        <div className="hidden md:block">
-          <p className="text-muted text-xs font-bold uppercase tracking-widest">{isSeller ? 'Seller Hub' : 'Buyer Hub'}</p>
-        </div>
       </div>
+      
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col min-h-0 bg-black relative z-0">
 
-      <div className="flex-1 flex flex-col min-h-0 bg-black">
-        {/* ── INQUIRIES TAB (Seller) ── */}
+        {/* ── INQUIRIES TAB (Seller only) ── */}
         {activeTab === 'inquiries' && isSeller && (
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 md:p-8 space-y-8 max-w-4xl mx-auto w-full">
             {/* Pending */}
@@ -236,7 +352,7 @@ export default function ChatPage() {
                       onClick={() => {
                         if (inq.status === 'accepted' && inq.roomId) {
                           setActiveRoom(inq.roomId);
-                          setActiveTab('messages');
+                          setActiveTab('property-chats');
                         }
                       }}
                     >
@@ -268,87 +384,39 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* ── MESSAGES TAB ── */}
-        {activeTab === 'messages' && (
+        {/* ── PROPERTY CHATS TAB ── */}
+        {activeTab === 'property-chats' && (
           <div className="flex-1 flex gap-4 min-h-0 px-2 md:px-4 py-2 md:py-4">
-            {/* Room list */}
-            <div className="w-64 shrink-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-dark-border">
-                <h3 className="font-display font-bold text-sm uppercase tracking-wider text-muted">Conversations</h3>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                {loadingRooms ? (
-                  <div className="p-4 space-y-3">
-                    {[1, 2, 3].map(i => <div key={i} className="h-16 bg-dark-border/40 rounded-xl animate-pulse" />)}
-                  </div>
-                ) : (rooms as any[]).length === 0 ? (
-                  <div className="p-8 text-center text-muted">
-                    <Users size={32} className="mx-auto mb-3 opacity-30" />
-                    <p className="text-sm font-bold">No conversations yet</p>
-                    <p className="text-xs opacity-60 mt-1">
-                      {isSeller ? 'Accept an inquiry to start chatting.' : 'Express interest in a property to get started.'}
-                    </p>
-                  </div>
-                ) : (
-                  (rooms as any[]).map((room: any) => {
-                    const isActive = activeRoomId === room.roomId;
-                    const otherParty = isSeller ? room.buyerName : 'Seller';
-                    const label = room.propertyTitle || `Property Chat`;
-                    return (
-                      <button
-                        key={room.roomId}
-                        onClick={() => setActiveRoom(room.roomId)}
-                        className={`w-full text-left p-4 border-b border-dark-border transition-colors hover:bg-dark-hover ${
-                          isActive ? 'bg-primary/5 border-l-4 border-l-primary' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
-                            <User size={16} className="text-muted" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-bold text-sm text-white truncate">{otherParty}</p>
-                            <p className="text-xs text-muted truncate">{label}</p>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Chat area */}
-            <div className="flex-1 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
-              {activeRoomId ? (
-                <>
-                  <div className="p-4 border-b border-dark-border bg-black/20 backdrop-blur-sm flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center">
-                      <MessageSquare size={16} className="text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-sm text-white">Secure Conversation</p>
-                      <p className="text-xs text-muted">End-to-end monitored for your safety</p>
-                    </div>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <ChatWindow roomId={activeRoomId} />
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex flex-col items-center justify-center text-muted p-8 text-center">
-                  <div className="w-20 h-20 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center mb-6">
-                    <MessageSquare size={36} className="text-primary/40" />
-                  </div>
-                  <h3 className="text-xl font-display font-bold mb-2 text-white">Your Secure Inbox</h3>
-                  <p className="text-sm max-w-sm">
-                    Select a conversation from the left to start chatting. All messages are monitored for your safety.
-                  </p>
-                </div>
-              )}
-            </div>
+            <RoomList roomsList={propertyRooms} />
+            <ChatArea />
           </div>
         )}
+
+        {/* ── AUCTION CHATS TAB ── */}
+        {activeTab === 'auction-chats' && (
+          <div className="flex-1 flex gap-4 min-h-0 px-2 md:px-4 py-2 md:py-4">
+            {/* Empty state hint when no auction rooms */}
+            {auctionRooms.length === 0 && !loadingRooms ? (
+              <div className="flex-1 flex flex-col items-center justify-center text-muted text-center p-8">
+                <div className="w-20 h-20 rounded-full bg-primary/5 border border-primary/20 flex items-center justify-center mb-6">
+                  <Gavel size={36} className="text-primary/40" />
+                </div>
+                <h3 className="text-xl font-display font-bold mb-2 text-white">No Auction Chats</h3>
+                <p className="text-sm max-w-sm">
+                  {isSeller
+                    ? 'Auction winner chats will appear here once your auctions complete.'
+                    : 'Win an auction to start a private chat with the seller here.'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <RoomList roomsList={auctionRooms} />
+                <ChatArea />
+              </>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );

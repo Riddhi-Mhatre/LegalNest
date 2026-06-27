@@ -9,7 +9,7 @@ import { FullPageLoader } from '../components/common/Loader';
 import { formatPrice } from '../utils/formatters';
 import { toast } from 'sonner';
 import { MapPin, Bed, Bath, Square, Handshake, Heart, Share2,
-  Phone, ShieldCheck, Clock, Eye, AlertCircle, CheckCircle, MessageSquare
+  ShieldCheck, Clock, Eye, AlertCircle, CheckCircle, MessageSquare
 } from 'lucide-react';
 import { ROUTES } from '../utils/constants';
 import { useState } from 'react';

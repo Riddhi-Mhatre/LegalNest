@@ -13,8 +13,8 @@ export const createProperty = (data: FormData | object) =>
 export const updateProperty = (id: string, data: object) =>
   api.put(`/properties/${id}`, data).then(r => r.data.data);
 
-export const expressInterest = (id: string) =>
-  api.post(`/properties/${id}/interest`).then(r => r.data.data);
+export const expressInterest = (id: string, source?: string) =>
+  api.post(`/properties/${id}/interest${source ? `?source=${source}` : ''}`).then(r => r.data.data);
 
 export const saveFavorite = (id: string) =>
   api.post(`/properties/${id}/favorite`).then(r => r.data.data);

@@ -343,5 +343,84 @@ export const DealSystemCard = ({ message, room, isBuyer, isSeller, onRoomUpdate 
     );
   }
 
+  // ─── auction_winner ────────────────────────────────────────────────────────
+  if (type === 'auction_winner') {
+    const winningBid = payload?.winningBid;
+    const propertyTitle = payload?.propertyTitle;
+    return (
+      <div className="flex justify-center my-4">
+        <div
+          className="w-full max-w-sm rounded-2xl overflow-hidden shadow-xl relative"
+          style={{
+            background: 'linear-gradient(135deg, #1a1400 0%, #0d0d0d 60%)',
+            border: '1px solid rgba(234,179,8,0.35)',
+            boxShadow: '0 8px 32px rgba(234,179,8,0.12)',
+          }}
+        >
+          {/* Top shimmer bar */}
+          <div
+            className="h-0.5 w-full"
+            style={{ background: 'linear-gradient(90deg, transparent, #EAB308 50%, transparent)' }}
+          />
+          <div className="p-6 text-center space-y-4">
+            {/* Trophy */}
+            <div
+              className="w-16 h-16 rounded-full flex items-center justify-center mx-auto"
+              style={{
+                background: 'radial-gradient(circle, rgba(234,179,8,0.2) 0%, rgba(234,179,8,0.05) 70%)',
+                border: '2px solid rgba(234,179,8,0.4)',
+              }}
+            >
+              <span className="text-3xl">🏆</span>
+            </div>
+
+            <div>
+              <h3
+                className="text-xl font-display font-black mb-1"
+                style={{ color: '#EAB308' }}
+              >
+                Congratulations, Winner!
+              </h3>
+              {propertyTitle && (
+                <p className="text-xs text-muted">
+                  You won the auction for <strong className="text-white">"{propertyTitle}"</strong>
+                </p>
+              )}
+            </div>
+
+            {winningBid && (
+              <div
+                className="rounded-xl px-4 py-3"
+                style={{
+                  background: 'rgba(234,179,8,0.07)',
+                  border: '1px solid rgba(234,179,8,0.2)',
+                }}
+              >
+                <p className="text-xs text-muted uppercase font-bold tracking-wider mb-0.5">Winning Bid</p>
+                <p
+                  className="text-2xl font-display font-black"
+                  style={{ color: '#EAB308' }}
+                >
+                  ₹{Number(winningBid).toLocaleString('en-IN')}
+                </p>
+              </div>
+            )}
+
+            <p className="text-xs text-muted leading-relaxed">
+              Use this chat to discuss further details with the {isBuyer ? 'seller' : 'buyer'} and arrange an
+              <strong className="text-white"> offline meeting</strong> at a convenient location.
+            </p>
+          </div>
+          {/* Bottom shimmer bar */}
+          <div
+            className="h-0.5 w-full"
+            style={{ background: 'linear-gradient(90deg, transparent, #EAB308 50%, transparent)' }}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };
+

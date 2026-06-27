@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
@@ -6,8 +6,15 @@ import { MobileNav } from './components/layout/MobileNav';
 import { PrivateRoute } from './components/common/PrivateRoute';
 import { PublicOnlyRoute } from './components/common/PublicOnlyRoute';
 
-// Pages (lazy loaded)
-import { lazy, Suspense, useState } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
+
+// Scrolls window to top on every route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
+  return null;
+}
+
 import { Loader } from './components/common/Loader';
 import { SplashScreen } from './components/common/SplashScreen';
 
@@ -56,6 +63,7 @@ export default function App() {
   return (
     <BrowserRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
       <div className="min-h-screen flex flex-col">
+        <ScrollToTop />
         <Navbar />
         <main className="flex-1">
           <Suspense fallback={<Loader />}>

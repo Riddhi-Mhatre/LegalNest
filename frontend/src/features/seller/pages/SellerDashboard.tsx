@@ -3,6 +3,7 @@ import { Building2, Plus, Eye, Clock, CheckCircle, BarChart2, ChevronRight, Mess
 import { useAuthStore } from '../../../store/authStore';
 import { useQuery } from '@tanstack/react-query';
 import { getSellerDashboard, getSellerProperties } from '../../../services/sellerService';
+import { getSellerInquiries } from '../../../services/inquiryService';
 import { useNavigate } from 'react-router-dom';
 import {
   XAxis,
@@ -57,9 +58,16 @@ export default function SellerDashboard() {
     queryFn: getSellerProperties,
   });
 
-  // Since inquiries aren't fully tracked yet, we'll derive a mock inquiry count from views for the UI.
-  // In a real app, this would be returned from getSellerDashboard.
-  const totalInquiries = Math.floor((dashboard?.totalViews ?? 0) * 0.05); 
+  const {
+    data: inquiries = [],
+    isLoading: inqLoading,
+  } = useQuery({
+    queryKey: ['inquiries', 'seller'],
+    queryFn: getSellerInquiries,
+    enabled: !!user,
+  });
+
+  const totalInquiries = (inquiries as any[]).length;
 
   const stats = [
     {
@@ -85,7 +93,7 @@ export default function SellerDashboard() {
     },
     {
       label: 'Total Inquiries',
-      value: dashLoading ? '—' : String(totalInquiries),
+      value: inqLoading ? '—' : String(totalInquiries),
       icon: MessageSquare,
       color: 'text-blue-400',
       onClick: () => navigate('/seller/chat'),
@@ -162,7 +170,7 @@ export default function SellerDashboard() {
             <div
               key={stat.label}
               onClick={stat.onClick}
-              className={`relative p-6 bg-dark-card border border-dark-border rounded-2xl overflow-hidden group hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 ${stat.onClick ? 'cursor-pointer' : ''}`}
+              className={`relative p-6 bg-dark-card border border-dark-border rounded-2xl overflow-hidden group hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer`}
             >
               <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-300">
                 <stat.icon size={100} />

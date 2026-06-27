@@ -15,9 +15,13 @@ export interface Auction {
   extensionCount: number;
   maxExtensions: number;
   winnerId?: string;
+  winnerName?: string;
+  winnerChatRoomId?: string;
   createdAt: string;
   bids?: Bid[];
+  totalBids?: number;
 }
+
 
 export interface AuctionWithProperty extends Auction {
   property?: {

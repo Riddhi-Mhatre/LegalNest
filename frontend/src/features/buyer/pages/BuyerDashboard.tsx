@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '../../../store/authStore';
-import { Heart, Gavel, ArrowRight, Trophy, Sparkles, Loader2, AlertCircle, CheckCircle, Building2 } from 'lucide-react';
+import { Gavel, ArrowRight, Trophy, Loader2, AlertCircle, CheckCircle, Building2, Bookmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../../utils/constants';
 import { SummaryCard } from '../../../components/common/SummaryCard';
@@ -9,7 +9,7 @@ import { AuctionCard } from '../../../components/auctions/AuctionCard';
 import { BidTable } from '../../../components/auctions/BidTable';
 import { getAuctions } from '../../../services/auctionService';
 import { getProperties } from '../../../services/propertyService';
-import { getBuyerBids, getPurchases } from '../../../services/userService';
+import { getBuyerBids, getPurchases, getSavedProperties } from '../../../services/userService';
 
 export default function BuyerDashboard() {
   const { user } = useAuthStore();
@@ -38,7 +38,13 @@ export default function BuyerDashboard() {
     queryFn: getPurchases,
   });
 
-  const isLoading = liveAuctionsLoading || propsLoading || bidsLoading || purchasesLoading;
+  // 5. Fetch saved properties
+  const { data: savedProperties = [], isLoading: savedLoading } = useQuery({
+    queryKey: ['buyer', 'dashboard-saved-properties'],
+    queryFn: getSavedProperties,
+  });
+
+  const isLoading = liveAuctionsLoading || propsLoading || bidsLoading || purchasesLoading || savedLoading;
 
   // Enriched live auctions for "Trending Auctions" list
   const propertyMap = new Map((properties as any[]).map(p => [p.propertyId, p]));
@@ -47,12 +53,9 @@ export default function BuyerDashboard() {
     property: propertyMap.get(a.propertyId),
   }));
 
-  // Recommended Properties (just slice the first 3 approved ones)
+  // Recommended Properties (just slice the first 3 properties)
   const recommendedProperties = (properties as any[]).slice(0, 3);
 
-  // Compute stats for Summary Cards
-  const activeAuctionsCount = liveAuctions.length;
-  
   // Unique auctions bid on
   const participatedAuctionIds = new Set((buyerBids as any[]).map(b => b.auctionId));
   const auctionsParticipatedCount = participatedAuctionIds.size;
@@ -60,8 +63,9 @@ export default function BuyerDashboard() {
   // Won auctions count
   const auctionsWonCount = (buyerBids as any[]).filter(b => b.isWinner || b.status === 'won').length;
 
-  // Current highest bids (winning bids count)
-  const currentHighestBidsCount = (buyerBids as any[]).filter(b => b.status === 'winning').length;
+  // Property stats
+  const purchasedCount = purchases.length;
+  const savedCount = savedProperties.length;
 
   // Map backend bids list to matches for BidTable component format
   const mappedBids = (buyerBids as any[]).map(b => ({
@@ -123,10 +127,18 @@ export default function BuyerDashboard() {
 
       {/* Summary Cards */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <SummaryCard label="Active Auctions" count={activeAuctionsCount} icon={Gavel} color="text-primary" />
-        <SummaryCard label="Auctions Participated" count={auctionsParticipatedCount} icon={Heart} color="text-rose-500" />
-        <SummaryCard label="Auctions Won" count={auctionsWonCount} icon={Trophy} color="text-accent" />
-        <SummaryCard label="Current Highest Bids" count={currentHighestBidsCount} icon={Sparkles} color="text-secondary" />
+        <Link to={ROUTES.BUYER_PURCHASES} className="block">
+          <SummaryCard label="Purchased Properties" count={purchasedCount} icon={Building2} color="text-emerald-400" />
+        </Link>
+        <Link to={ROUTES.BUYER_SAVED} className="block">
+          <SummaryCard label="Saved Properties" count={savedCount} icon={Bookmark} color="text-primary" />
+        </Link>
+        <Link to={ROUTES.BUYER_BIDS} className="block">
+          <SummaryCard label="Auctions Participated" count={auctionsParticipatedCount} icon={Gavel} color="text-rose-500" />
+        </Link>
+        <Link to={`${ROUTES.BUYER_BIDS}?filter=won`} className="block">
+          <SummaryCard label="Auctions Won" count={auctionsWonCount} icon={Trophy} color="text-accent" />
+        </Link>
       </section>
 
       {/* Recommended Properties */}

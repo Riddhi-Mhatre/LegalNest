@@ -86,7 +86,7 @@ export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
     >
       {/* Image */}
       <div className="relative overflow-hidden h-48 bg-dark-hover">
-        {property.images[0] ? (
+        {property.images?.[0] ? (
           <img
             src={property.images[0]}
             alt={property.title}

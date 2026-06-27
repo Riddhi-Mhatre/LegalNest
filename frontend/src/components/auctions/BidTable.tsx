@@ -34,12 +34,11 @@ export function BidTable({ bids }: BidTableProps) {
             <th className="py-4 px-6 font-medium">My Bid</th>
             <th className="py-4 px-6 font-medium">Status</th>
             <th className="py-4 px-6 font-medium">Auction End</th>
-            <th className="py-4 px-6 font-medium text-right">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-dark-border">
           {bids.map((bid) => (
-            <tr key={bid.id} className="hover:bg-white/5 transition-colors group">
+            <tr key={bid.id} className="hover:bg-white/5 transition-colors">
               <td className="py-4 px-6">
                 <div className="flex items-center gap-4">
                   <img src={bid.image} alt={bid.propertyTitle} className="w-12 h-12 rounded object-cover" />
@@ -59,18 +58,6 @@ export function BidTable({ bids }: BidTableProps) {
               </td>
               <td className="py-4 px-6 text-sm text-gray-300">
                 {bid.auctionEnd}
-              </td>
-              <td className="py-4 px-6 text-right">
-                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white rounded text-xs font-bold uppercase tracking-widest transition-colors border border-dark-border">
-                    View
-                  </button>
-                  {bid.status === 'outbid' && (
-                    <button className="px-3 py-1.5 bg-primary hover:bg-white text-black rounded text-xs font-bold uppercase tracking-widest transition-colors">
-                      Increase Bid
-                    </button>
-                  )}
-                </div>
               </td>
             </tr>
           ))}

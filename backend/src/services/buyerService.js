@@ -106,14 +106,14 @@ export const removeSavedProperty = async (buyerId, propertyId) => {
 
 // ─── Bids ──────────────────────────────────────────────────────────────────────
 export const getBuyerBidsFromBidTable = async (buyerId) => {
-  // Bids table: auctionId (PK) + bidId (SK), no buyerId GSI in current model
-  // We scan by userId from the bids stored by auctionEngine
+  // Bids table: auctionId (PK) + bidId (SK)
+  // auctionEngine stores bids with field `bidderId` (not `userId`)
   const { dynamoClient } = await import('../config/aws.js');
   const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
   const result = await dynamoClient.send(
     new ScanCommand({
       TableName: env.DYNAMODB_BIDS_TABLE,
-      FilterExpression: 'userId = :uid',
+      FilterExpression: 'bidderId = :uid',
       ExpressionAttributeValues: { ':uid': buyerId },
     })
   );
@@ -128,11 +128,12 @@ export const getBuyerBidsEnriched = async (buyerId) => {
       if (!auction) return null;
       const property = auction.propertyId ? await PropertyModel.getProperty(auction.propertyId) : null;
       const highestBid = await BidModel.getHighestBidder(bid.auctionId);
-      const isWinner = highestBid?.userId === buyerId;
+      // auctionEngine stores winner field as `bidderId` (not `userId`)
+      const isWinner = highestBid?.bidderId === buyerId;
       let status = 'outbid';
       if (auction.status === 'live') {
         status = isWinner ? 'winning' : 'outbid';
-      } else if (auction.status === 'ended') {
+      } else if (auction.status === 'ended' || auction.status === 'completed') {
         status = isWinner ? 'won' : 'lost';
       }
       return {

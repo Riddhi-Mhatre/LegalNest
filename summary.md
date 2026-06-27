@@ -2,7 +2,7 @@
 
 > **Project Name:** GharBid (marketed as **LegalNest**)
 > **Type:** Full-Stack Real-Estate Auction Platform
-> **Last Updated:** June 23, 2026
+> **Last Updated:** June 27, 2026
 
 ---
 
@@ -36,15 +36,13 @@
 | Role | Capabilities |
 |---|---|
 | **Seller** | List properties, upload KYC/identity docs, pay platform fee, schedule auctions, manage bids, view interested buyers |
-| **Buyer** | Browse, save, schedule visits, bid live, view legal docs, track purchases, manage membership + notifications |
-| **Admin** | Approve properties, verify users, schedule auctions, moderate platform |
+| **Buyer** | Browse, save, schedule visits (via inquiry), bid live, view legal docs, track purchases, manage notifications |
 
 Core features:
 - **Live auction rooms** - real-time bidding via Socket.IO
 - **Anti-sniping** - extends if bid arrives within 2 min of close
-- **Membership tiers** - Basic (free) / Premium (Rs.999/30d) / Elite (Rs.2999/30d); Premium+ gating for bidding
+- **Inquiry & Deal System** - Meet scheduling and offer negotiation via Chat 
 - **Platform fee** - sale: Rs.999, rent: Rs.299 per listing
-- **Property visit scheduling** - buyer requests, seller notified
 - **Legal + identity doc flow** - S3 upload for both seller KYC (gharbid-documents) and identity docs
 - **Seller auction management** - schedule auctions on approved props, view bids + interested buyers
 - **Feature-based frontend structure** - buyer + seller pages in `src/features/` modules
@@ -70,8 +68,6 @@ Core features:
 | Rate Limiting | express-rate-limit |
 | Security | Helmet + CORS |
 | Dev | node --watch |
-
-> Backend: JavaScript (ESM). Migrated from TypeScript June 2026.
 
 ### Frontend
 
@@ -113,7 +109,7 @@ AWS
   Cognito | DynamoDB (10+ tables) | S3 (3 buckets) | SES | Location
           |
 Lambdas (EventBridge / S3 event / DynamoDB Streams)
-  auctionScheduler | documentVerification | membershipExpiry | streamProcessor
+  auctionScheduler | documentVerification | streamProcessor
 ```
 
 ---
@@ -122,7 +118,7 @@ Lambdas (EventBridge / S3 event / DynamoDB Streams)
 
 | Service | Purpose | Config |
 |---|---|---|
-| **Cognito** | Auth + groups (Buyer/Seller/Admin) | Pool: ap-south-1_KwhN2NRwO |
+| **Cognito** | Auth + groups (Buyer/Seller) | Pool: ap-south-1_KwhN2NRwO |
 | **DynamoDB** | NoSQL primary store | 10+ tables |
 | **S3 gharbid-app-storage-2026** | General media | Pre-signed PUT, 5 min |
 | **S3 gharbid-property-images** | Property images | Pre-signed PUT, 5 min |
@@ -153,9 +149,9 @@ backend/
     +-- controllers/
     |   +-- auctionController.js        # List/get auctions, place bid
     |   +-- authController.js           # Register, login, OTP, refresh, logout
-    |   +-- buyerController.js          # 14 handlers: full buyer workflow
+    |   +-- buyerController.js          # Handlers for full buyer workflow
     |   +-- chatController.js           # Rooms + messages
-    |   +-- membershipController.js     # Legacy membership (pre-buyerService)
+    |   +-- inquiryController.js        # Deals and meeting requests
     |   +-- propertyController.js       # Property CRUD, interest, upload URL
     |   +-- sellerAuctionController.js  # Seller auction schedule + manage
     |   +-- sellerController.js         # Seller dashboard, docs, platform fees
@@ -172,23 +168,23 @@ backend/
     |   +-- dynamodb/
     |       +-- AuctionModel.js         # Auctions CRUD
     |       +-- BidModel.js             # putBid, getBidHistory
-    |       +-- MembershipModel.js      # getMembership, upsertMembership
+    |       +-- InquiryModel.js         # inquiries/deals
     |       +-- PaymentModel.js         # createPayment, queryBySeller/ByProperty
     |       +-- PropertyModel.js        # Properties CRUD + GSI
     |       +-- PurchaseModel.js        # getPurchasesByBuyer, createPurchase
     |       +-- SavedPropertiesModel.js # save, remove, getSaved, checkExists
     |       +-- TransactionModel.js     # Transaction records
+    |       +-- UserDocsModel.js        # user identity documents
     |       +-- UserModel.js            # User get/put/update
-    |       +-- VisitModel.js           # createVisit, getVisitsByBuyer, updateVisit
     +-- routes/
     |   +-- v1/
     |       +-- auction.routes.js       # /v1/auctions/*
     |       +-- auth.routes.js          # /v1/auth/*
-    |       +-- buyer.routes.js         # /v1/buyer/* (23 routes, buyer role)
+    |       +-- buyer.routes.js         # /v1/buyer/* 
     |       +-- chat.routes.js          # /v1/chat/*
-    |       +-- membership.routes.js    # /v1/memberships/* (legacy)
+    |       +-- inquiry.routes.js       # /v1/inquiry/*
     |       +-- property.routes.js      # /v1/properties/*
-    |       +-- seller.routes.js        # /v1/seller/* (+ 5 auction sub-routes)
+    |       +-- seller.routes.js        # /v1/seller/*
     |       +-- user.routes.js          # /v1/users/*
     +-- services/
     |   +-- auctionEngine.js            # Bid logic, anti-snipe, broadcast
@@ -199,10 +195,8 @@ backend/
     |   +-- dynamoService.js            # Generic DynamoDB CRUD
     |   +-- emailService.js             # SES emails
     |   +-- locationService.js          # Geocode, reverse, nearby
-    |   +-- membershipService.js        # Plans (basic/premium/elite) + upgrade
     |   +-- notificationService.js      # DynamoDB store + Socket.IO deliver
     |   +-- s3Service.js                # Pre-signed upload/read URLs
-    |   +-- visitService.js             # Schedule/update/cancel visits
     +-- utils/
     |   +-- constants.js      # AUCTION_CONFIG, HTTP codes
     |   +-- helpers.js        # generateUUID, date utils
@@ -216,7 +210,6 @@ backend/
     +-- lambdas/
     |   +-- auctionScheduler/index.js
     |   +-- documentVerification/index.js
-    |   +-- membershipExpiry/index.js
     |   +-- streamProcessor/index.js
     +-- websocket/
         +-- server.js         # Socket.IO init + JWT handshake + handler wiring
@@ -241,7 +234,7 @@ backend/
 | signOut() | Global sign-out |
 | confirmSignUp() | Email code confirm |
 | addUserToGroup() | Assign Buyer/Seller Cognito group |
-| getUserRole() | Resolve group (buyer/seller/admin) |
+| getUserRole() | Resolve group (buyer/seller) |
 | forgotPassword() | Trigger forgot-password |
 | confirmForgotPassword() | Reset with code |
 | requestOtp() | SMS OTP placeholder |
@@ -258,38 +251,17 @@ backend/
 | setAutoBid() | Set auto-bid max amount |
 | setIo() | Register Socket.IO instance |
 
-Anti-snipe: bid within SNIPE_WINDOW_MS (2 min) of close + extensionCount < MAX_EXTENSIONS -> extend.
-
 ### buyerService.js
 
 | Function | Description |
 |---|---|
-| getDashboardStats() | Aggregate: saved, visits, purchases, activeBids, wonAuctions, unread notifications |
+| getDashboardStats() | Aggregate stats |
 | getRecommendations() | Approved listings excl. already saved; paginated |
 | saveProperty() | Add to SavedPropertiesModel |
 | removeSavedProperty() | Remove from saved |
 | getSavedProperties() | List saved with property detail |
 | getBuyerBids() | All buyer bids from BidModel |
 | getLegalDocumentUrl() | Pre-signed GET URL for property docs |
-
-### visitService.js
-
-| Function | Description |
-|---|---|
-| scheduleVisit() | Create visit; notify seller |
-| getBuyerVisits() | List visits enriched with property data |
-| updateVisit() | Change status (scheduled/confirmed/completed/cancelled) |
-| cancelVisit() | Set cancelled; guard: no cancel on completed |
-
-### membershipService.js
-
-Plans: `basic` (free, unlimited), `premium` (Rs.999/30d), `elite` (Rs.2999/30d).
-
-| Function | Description |
-|---|---|
-| getMembershipPlans() | Return all 3 plan configs |
-| getBuyerMembership() | Membership + isActive check |
-| upgradeMembership() | Upsert premium/elite; 30-day expiry |
 
 ### buyerNotificationService.js
 
@@ -328,7 +300,6 @@ Plans: `basic` (free, unlimited), `premium` (Rs.999/30d), `elite` (Rs.2999/30d).
 | sendWelcomeEmail() | Registration |
 | sendOutbidEmail() | Outbid |
 | sendAuctionWinnerEmail() | Won auction |
-| sendMembershipExpiryEmail() | Expiry warning |
 
 ### s3Service.js
 
@@ -376,8 +347,8 @@ All versioned under `/v1`.
 | GET | / | - | - | List properties |
 | GET | /:id | - | - | Property detail |
 | POST | / | Yes | seller | Create property |
-| PUT | /:id | Yes | seller, admin | Update property |
-| DELETE | /:id | Yes | seller, admin | Delete property |
+| PUT | /:id | Yes | seller | Update property |
+| DELETE | /:id | Yes | seller | Delete property |
 | POST | /:id/interest | Yes | buyer | Express interest |
 | POST | /:id/favorite | Yes | buyer | Save to favourites |
 
@@ -411,7 +382,7 @@ All versioned under `/v1`.
 
 | Method | Path | Description |
 |---|---|---|
-| GET | /dashboard | Stats: saved/bids/auctions won/visits/purchases/notifications |
+| GET | /dashboard | Stats: saved/bids/auctions won/purchases/notifications |
 | GET | /recommendations | Paginated approved listings (excl. saved) |
 | POST | /saved-properties/:propertyId | Save property |
 | GET | /saved-properties | List saved properties |
@@ -420,15 +391,9 @@ All versioned under `/v1`.
 | GET | /auctions | Active auctions |
 | GET | /auctions/:auctionId | Auction detail |
 | POST | /auctions/:auctionId/bid | Place live bid |
-| POST | /visits | Schedule property visit |
-| GET | /visits | My visits (enriched with property) |
-| PUT | /visits/:visitId | Update visit status |
-| DELETE | /visits/:visitId | Cancel visit |
 | GET | /properties/:propertyId/documents | Property legal docs (pre-signed URLs) |
 | GET | /properties/:propertyId/legal-report | Legal report |
 | GET | /purchases | Purchased properties |
-| GET | /membership | My membership + isActive |
-| POST | /membership/upgrade | Upgrade plan |
 | GET | /notifications | My notifications (filterable by type) |
 | PUT | /notifications/:notificationId/read | Mark read |
 | DELETE | /notifications/:notificationId | Delete notification |
@@ -450,12 +415,13 @@ All versioned under `/v1`.
 | GET | /rooms/:roomId/messages | Yes | Room messages |
 | POST | /rooms/:roomId/messages | Yes | Send message |
 
-### Memberships - /v1/memberships (legacy)
+### Inquiry - /v1/inquiry
 
 | Method | Path | Auth | Role | Description |
 |---|---|---|---|---|
-| POST | / | Yes | buyer | Purchase membership |
-| GET | /me | Yes | buyer | Membership status |
+| POST | / | Yes | buyer | Create inquiry/deal |
+| GET | /:id | Yes | - | Get inquiry status |
+| PATCH | /:id | Yes | seller | Update inquiry status |
 
 ---
 
@@ -481,7 +447,6 @@ All versioned under `/v1`.
 |---|---|---|
 | auctionScheduler | EventBridge | scheduled -> live -> closed transitions |
 | documentVerification | S3 put event | KYC doc review pipeline |
-| membershipExpiry | EventBridge | Expire memberships + send email |
 | streamProcessor | DynamoDB Streams | Notifications, analytics, sync |
 
 ---
@@ -505,9 +470,9 @@ All versioned under `/v1`.
 | Dir | Event | Payload |
 |---|---|---|
 | C->S | join_room | { roomId } |
-| C->S | send_message | { content } |
+| C->S | send_message | { content, type } |
 | C->S | typing | { roomId } |
-| S->C | message | { content, sender, timestamp } |
+| S->C | message | { content, type, sender, timestamp } |
 | S->C | typing | { userId } |
 
 ### Notification Events
@@ -542,87 +507,95 @@ frontend/
     |   +-- PropertyDetailPage.tsx
     |   +-- AuctionsListPage.tsx
     |   +-- AuctionRoomPage.tsx   # Live bidding room
-    |   +-- MembershipPage.tsx    # Public membership info
     |   +-- ChatPage.tsx
     |   +-- ProfilePage.tsx
     |
     +-- features/                 # Feature modules (role-scoped)
     |   +-- buyer/
     |   |   +-- pages/
-    |   |       +-- BuyerDashboard.tsx          # Stats: saved/bids/visits/purchases
-    |   |       +-- BuyerAuctionsPage.tsx        # Active auctions list
-    |   |       +-- BuyerBidsPage.tsx            # My bid history
-    |   |       +-- BuyerSavedPage.tsx           # Saved properties
-    |   |       +-- BuyerVisitsPage.tsx          # Scheduled visits
-    |   |       +-- BuyerLegalDocumentsPage.tsx  # Property legal doc viewer
-    |   |       +-- BuyerPurchasesPage.tsx       # Purchased properties
-    |   |       +-- BuyerMembershipPage.tsx      # Membership status + upgrade
-    |   |       +-- BuyerProfilePage.tsx         # Buyer profile edit
+    |   |       +-- BuyerDashboard.tsx          
+    |   |       +-- BuyerAuctionsPage.tsx        
+    |   |       +-- BuyerBidsPage.tsx            
+    |   |       +-- BuyerSavedPage.tsx           
+    |   |       +-- BuyerLegalDocumentsPage.tsx  
+    |   |       +-- BuyerPurchasesPage.tsx       
+    |   |       +-- BuyerProfilePage.tsx         
     |   +-- seller/
     |       +-- pages/
-    |           +-- SellerDashboard.tsx              # Seller home + stats
-    |           +-- AddPropertyPage.tsx              # Multi-step listing form
-    |           +-- MyPropertiesPage.tsx             # Property portfolio
-    |           +-- PaymentsPage.tsx                 # Platform fee history + pay
-    |           +-- DocumentUploadPage.tsx           # KYC doc upload (S3)
-    |           +-- SellerAuctionDashboard.tsx       # All seller auctions
-    |           +-- SellerAuctionManagementPage.tsx  # Per-property auction manage
-    |           +-- SellerIdentityDocsPage.tsx       # Identity doc upload + manage
+    |           +-- SellerDashboard.tsx              
+    |           +-- AddPropertyPage.tsx              
+    |           +-- MyPropertiesPage.tsx             
+    |           +-- PaymentsPage.tsx                 
+    |           +-- DocumentUploadPage.tsx           
+    |           +-- SellerAuctionDashboard.tsx       
+    |           +-- SellerAuctionManagementPage.tsx  
+    |           +-- SellerIdentityDocsPage.tsx       
+    |           +-- SellerSoldPropertiesPage.tsx
     |
     +-- components/
     |   +-- auctions/
     |   |   +-- BidHistory.tsx
     |   |   +-- BidPanel.tsx
-    |   |   +-- CountdownTimer.tsx   # Urgency colors green/yellow/red
+    |   |   +-- CountdownTimer.tsx   
     |   |   +-- Leaderboard.tsx
     |   +-- chat/
     |   |   +-- ChatInput.tsx
     |   |   +-- ChatWindow.tsx
     |   |   +-- MeetingRequest.tsx
     |   |   +-- MessageBubble.tsx
+    |   |   +-- DealActionBar.tsx
+    |   |   +-- DealSystemCard.tsx
+    |   |   +-- DemoPaymentModal.tsx
+    |   |   +-- FileAttachmentButton.tsx
+    |   |   +-- MeetSchedulerDialog.tsx
+    |   |   +-- MessageSuggestions.tsx
     |   +-- common/
     |   |   +-- ErrorBoundary.tsx
     |   |   +-- Loader.tsx
-    |   |   +-- NotificationPanel.tsx    # In-app notification dropdown
-    |   |   +-- PrivateRoute.tsx         # Role guard (Outlet)
-    |   |   +-- PublicOnlyRoute.tsx      # Redirect logged-in users away from login/register
+    |   |   +-- NotificationPanel.tsx    
+    |   |   +-- PrivateRoute.tsx         
+    |   |   +-- PublicOnlyRoute.tsx      
     |   |   +-- SplashScreen.tsx
-    |   |   +-- SummaryCard.tsx          # Reusable stat summary card
+    |   |   +-- SummaryCard.tsx          
+    |   |   +-- SearchBar.tsx
     |   +-- layout/
-    |   |   +-- BuyerLayout.tsx          # Persistent sidebar shell for /buyer/* routes
-    |   |   +-- BuyerSidebar.tsx         # Nav: dashboard/auctions/bids/saved/visits/docs/purchases/membership/profile
+    |   |   +-- BuyerLayout.tsx          
+    |   |   +-- BuyerSidebar.tsx         
+    |   |   +-- SellerLayout.tsx
+    |   |   +-- SellerSidebar.tsx
     |   |   +-- Footer.tsx
     |   |   +-- MobileNav.tsx
-    |   |   +-- Navbar.tsx               # Top nav with role menu + auth state
+    |   |   +-- Navbar.tsx               
     |   +-- properties/
     |       +-- ImageGallery.tsx
     |       +-- PropertyCard.tsx
+    |       +-- BuyerPropertyCard.tsx
     |       +-- PropertyFilters.tsx
     |       +-- PropertyGrid.tsx
-    |       +-- PropertyMap.tsx           # MapLibre GL pins
+    |       +-- PropertyMap.tsx           
     |
     +-- hooks/
-    |   +-- useAuth.ts        # Reads authStore
-    |   +-- useDebounce.ts    # Debounce values
-    |   +-- useGeolocation.ts # navigator.geolocation wrapper
-    |   +-- useMediaQuery.ts  # Responsive breakpoints
-    |   +-- useSocket.ts      # Socket.IO lifecycle
+    |   +-- useAuth.ts        
+    |   +-- useDebounce.ts    
+    |   +-- useGeolocation.ts 
+    |   +-- useMediaQuery.ts  
+    |   +-- useSocket.ts      
     |
     +-- services/
-    |   +-- api.ts            # Axios + base URL + auth interceptors
-    |   +-- authService.ts    # login, register, logout, refresh
-    |   +-- auctionService.ts # listAuctions, getAuction, placeBid
-    |   +-- chatService.ts    # getRooms, getMessages, sendMessage
-    |   +-- membershipService.ts
+    |   +-- api.ts            
+    |   +-- authService.ts    
+    |   +-- auctionService.ts 
+    |   +-- chatService.ts    
+    |   +-- inquiryService.ts
     |   +-- propertyService.ts
-    |   +-- sellerService.ts  # S3 uploads, platform fees, auction mgmt
+    |   +-- sellerService.ts  
     |   +-- userService.ts
     |
     +-- store/
-    |   +-- authStore.ts      # Zustand: user/role/tokens/isAuthenticated
-    |   +-- auctionStore.ts   # Zustand: active auction state
-    |   +-- chatStore.ts      # Zustand: rooms + messages
-    |   +-- filterStore.ts    # Zustand: property filters
+    |   +-- authStore.ts      
+    |   +-- auctionStore.ts   
+    |   +-- chatStore.ts      
+    |   +-- filterStore.ts    
     |
     +-- types/
     |   +-- api.types.ts
@@ -633,9 +606,10 @@ frontend/
     |
     +-- utils/
         +-- constants.ts
-        +-- formatters.ts     # Currency (INR), date, area
+        +-- formatters.ts     
         +-- geohash.ts
         +-- socket.ts
+        +-- messageSuggestions.ts
         +-- validators.ts
 ```
 
@@ -653,7 +627,6 @@ frontend/
 | /properties/:id | PropertyDetailPage |
 | /auctions | AuctionsListPage |
 | /auctions/:id | AuctionRoomPage |
-| /membership | MembershipPage |
 
 ### PublicOnlyRoute (redirect if logged in)
 
@@ -670,13 +643,11 @@ frontend/
 | /buyer/auctions | BuyerAuctionsPage | features/buyer/pages |
 | /buyer/bids | BuyerBidsPage | features/buyer/pages |
 | /buyer/saved | BuyerSavedPage | features/buyer/pages |
-| /buyer/visits | BuyerVisitsPage | features/buyer/pages |
 | /buyer/legal-documents | BuyerLegalDocumentsPage | features/buyer/pages |
 | /buyer/purchases | BuyerPurchasesPage | features/buyer/pages |
-| /buyer/membership | BuyerMembershipPage | features/buyer/pages |
 | /buyer/profile | BuyerProfilePage | features/buyer/pages |
 
-### Protected - Seller (role: seller)
+### Protected - Seller (role: seller, wrapped in SellerLayout)
 
 | Path | Page | Source |
 |---|---|---|
@@ -689,6 +660,7 @@ frontend/
 | /seller/payments | PaymentsPage | features/seller/pages |
 | /seller/documents | DocumentUploadPage | features/seller/pages |
 | /seller/identity-documents | SellerIdentityDocsPage | features/seller/pages |
+| /seller/sold | SellerSoldPropertiesPage | features/seller/pages |
 
 ### Protected - All authenticated (buyer or seller)
 
@@ -697,7 +669,7 @@ frontend/
 | /chat | ChatPage |
 | /profile | ProfilePage |
 
-All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside BuyerLayout.
+All pages lazy-loaded. SplashScreen on first load. 
 
 ---
 
@@ -711,19 +683,27 @@ All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside Bu
 | CountdownTimer | Urgency countdown green/yellow/red |
 | Leaderboard | Ranked top bidders |
 
-### Chat
+### Chat (Including Deal System)
 | Component | Purpose |
 |---|---|
 | ChatWindow | Message thread |
 | ChatInput | Composer + send |
 | MessageBubble | Single message |
 | MeetingRequest | Schedule visit widget |
+| DealActionBar | Contextual deal actions in chat |
+| DealSystemCard | Rich deal system display for negotiations |
+| DemoPaymentModal | Payment mocking for deal completion |
+| MeetSchedulerDialog | Scheduling overlay |
+| FileAttachmentButton | Media sharing |
+| MessageSuggestions | Smart replies |
 
 ### Layout
 | Component | Purpose |
 |---|---|
 | BuyerLayout | Shell + sidebar for all /buyer/* routes |
 | BuyerSidebar | Nav links for buyer feature pages |
+| SellerLayout | Shell + sidebar for all /seller/* routes |
+| SellerSidebar | Nav links for seller feature pages |
 | Navbar | Top nav: role menu + auth state |
 | Footer | Site footer |
 | MobileNav | Fixed bottom mobile nav |
@@ -738,11 +718,13 @@ All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside Bu
 | SplashScreen | Branded splash on first load |
 | Loader | Fullscreen spinner |
 | ErrorBoundary | Render error fallback |
+| SearchBar | Global search input |
 
 ### Properties
 | Component | Purpose |
 |---|---|
 | PropertyCard | Image + price + location card |
+| BuyerPropertyCard | Buyer-specific view of property |
 | PropertyGrid | Responsive card grid |
 | PropertyFilters | Filter panel (price, type, location, beds) |
 | PropertyMap | MapLibre GL pins |
@@ -806,9 +788,9 @@ All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside Bu
 | LegalNest-Messages | roomId | messageId | Messages (90-day TTL) |
 | LegalNest-Notifications | userId | notificationId | In-app notifications |
 | LegalNest-Payments | paymentId | - | Platform fee records |
-| LegalNest-Memberships | userId | - | Membership plan + expiry |
 | LegalNest-SavedProperties | buyerId + propertyId | - | Saved property records |
-| LegalNest-Visits | visitId | - | Property visit records |
+| LegalNest-Inquiries | inquiryId | - | Inquiries and deal workflow records |
+| LegalNest-UserDocs | docId | - | User identity documentation |
 | LegalNest-Purchases | purchaseId | - | Purchased property records (GSI: buyerId) |
 
 ### Key Entity Shapes
@@ -839,21 +821,11 @@ All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside Bu
 }
 ```
 
-**Membership**
+**Inquiry**
 ```json
 {
-  "userId": "", "plan": "basic|premium|elite",
-  "purchasedAt": "", "expiryDate": "",
-  "status": "active|expired", "transactionId": ""
-}
-```
-
-**Visit**
-```json
-{
-  "visitId": "", "buyerId": "", "propertyId": "", "sellerId": "",
-  "date": "", "time": "",
-  "status": "scheduled|confirmed|completed|cancelled",
+  "inquiryId": "", "buyerId": "", "propertyId": "", "sellerId": "",
+  "status": "pending|accepted|rejected|closed",
   "createdAt": ""
 }
 ```
@@ -866,14 +838,6 @@ All pages lazy-loaded. SplashScreen on first load. Buyer routes nested inside Bu
   "status": "success|pending|failed", "createdAt": ""
 }
 ```
-
-### Membership Plans
-
-| Plan | Price | Duration | Key Benefits |
-|---|---|---|---|
-| basic | Free | Indefinite | Browse, save 10 props, basic support |
-| premium | Rs.999 | 30 days | Live auctions, unlimited saves, priority KYC, dedicated support |
-| elite | Rs.2999 | 30 days | All premium + early luxury access, free valuations, concierge visits |
 
 ---
 
@@ -939,63 +903,37 @@ VITE_AWS_REGION=ap-south-1
 
 ## Changelog
 
-### June 23, 2026 (evening) - Frontend Refactor
+### June 27, 2026 - Two-Role System, Inquiries & Advanced Chat
+
+**Architectural Shift:**
+- Complete removal of the "Admin" role across backend and frontend. The platform now operates on a two-role system (Buyer / Seller).
+- Replaced traditional Visit and Membership modules with a robust **Inquiry/Deal system** integrated directly into the Chat flow.
+
+**Backend Changes:**
+- Removed `adminController`, `admin.routes`, `requireAdmin` middleware.
+- Replaced `VisitModel` and `MembershipModel` with `InquiryModel` and `UserDocsModel`.
+- Added `/v1/inquiry/*` routes and `inquiryController`.
+- Chat handlers and messages expanded to support "deals", "meeting_requests", and typed messages.
+
+**Frontend Changes:**
+- **Layouts**: Added `SellerLayout` and `SellerSidebar` for seller routes.
+- **Chat Enhancements**: Added `DealSystemCard`, `MeetSchedulerDialog`, `DemoPaymentModal`, `MessageSuggestions`, and rich interactions directly within the Chat page.
+- **Role Scoping**: Removed Admin Dashboard and Membership pages.
+- **New Seller Features**: Added `SellerSoldPropertiesPage`.
+
+### June 23, 2026 - Frontend Refactor & Buyer Module Expansion
 
 **Frontend restructured to feature-based module layout:**
-- `src/pages/` now contains only public + shared pages (11 files)
-- `src/features/buyer/pages/` - all 9 buyer pages moved here
-- `src/features/seller/pages/` - all seller pages moved here (8 files)
-- New seller page: `SellerIdentityDocsPage.tsx` + route `/seller/identity-documents`
+- `src/pages/` -> public/shared only
+- `src/features/buyer/` -> buyer-specific routes
+- `src/features/seller/` -> seller-specific routes
+- New generic components like `SummaryCard` and `NotificationPanel`.
 
-**New common components:**
-- `PublicOnlyRoute.tsx` - redirects logged-in users away from /login and /register
-- `NotificationPanel.tsx` - in-app notification dropdown with read/delete
-- `SummaryCard.tsx` - reusable stat card for dashboards
+### June 17, 2026 - Migration & Seller Module
 
-**Routing changes in App.tsx:**
-- Login + register wrapped in `PublicOnlyRoute`
-- Seller routes expanded: `/seller/identity-documents` added
-
-### June 23, 2026 (morning) - Buyer Module + Seller Auctions
-
-**Backend - New Buyer Module (/v1/buyer)**
-- `buyerController.js` - 14 handlers
-- `buyer.routes.js` - 23 routes, buyer role required
-- `buyerService.js` - dashboard stats, recommendations, saved properties
-- `visitService.js` - schedule/update/cancel visits; seller notified
-- `membershipService.js` - 3 tiers (basic/premium/elite)
-- `buyerNotificationService.js` - get/markRead/delete/alert
-
-**Backend - New DynamoDB Models**
-- `MembershipModel.js`, `PurchaseModel.js`, `SavedPropertiesModel.js`, `VisitModel.js`
-
-**Backend - Seller Auction Management**
-- `sellerAuctionController.js` - schedule, view details, bid history, interested buyers, all auctions
-- `seller.routes.js` extended with 5 auction sub-routes
-
-**Frontend - New Buyer Pages (9)**
-All in `src/features/buyer/pages/`
-
-**Frontend - New Seller Pages (2)**
-`SellerAuctionDashboard`, `SellerAuctionManagementPage` in `src/features/seller/pages/`
-
-**Frontend - Layout**
-- `BuyerLayout.tsx` + `BuyerSidebar.tsx` - persistent sidebar for /buyer/* routes
-
-### June 17, 2026 - TypeScript to JavaScript + Seller Module
-
-- Backend migrated TypeScript -> JavaScript (ESM); node --watch replaces ts-node-dev
-- `sellerController.js` + `seller.routes.js` with dashboard, docs, platform fees
-- `PaymentModel.js` + LegalNest-Payments table
-- S3: 2 -> 3 buckets (added gharbid-property-images)
-- Frontend: AddPropertyPage, MyPropertiesPage, PaymentsPage, DocumentUploadPage
-- `sellerService.ts` with S3 upload + platform fee functions
-
-### June 15, 2026 - Initial
-
-- Initial project summary
-- TypeScript backend + React/TypeScript frontend documented
+- Backend migrated from TypeScript to JavaScript (ESM).
+- Introduction of Platform Fees and multi-bucket S3 architecture.
 
 ---
 
-*Generated on 2026-06-23 | LegalNest / GharBid v1.0.0*
+*Generated on 2026-06-27 | LegalNest / GharBid v1.0.0*

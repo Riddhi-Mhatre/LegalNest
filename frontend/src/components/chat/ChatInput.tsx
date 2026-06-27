@@ -10,9 +10,10 @@ interface ChatInputProps {
   roomId: string;
   disabled?: boolean;
   disabledReason?: string;
+  isAuctionRoom?: boolean;
 }
 
-export const ChatInput = ({ roomId, disabled, disabledReason }: ChatInputProps) => {
+export const ChatInput = ({ roomId, disabled, disabledReason, isAuctionRoom }: ChatInputProps) => {
   const [content, setContent] = useState('');
   const [sending, setSending] = useState(false);
   const { addMessage } = useChatStore();
@@ -55,7 +56,7 @@ export const ChatInput = ({ roomId, disabled, disabledReason }: ChatInputProps) 
 
   return (
     <div className="flex flex-col">
-      <MessageSuggestions onSelectSuggestion={handleSuggestionSelect} />
+      <MessageSuggestions onSelectSuggestion={handleSuggestionSelect} isAuctionRoom={isAuctionRoom} />
       <div className="border-t border-dark-border p-3 flex items-end gap-2 bg-dark-card/30">
         {/* File attachment button */}
         <FileAttachmentButton roomId={roomId} disabled={disabled} />

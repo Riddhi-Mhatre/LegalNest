@@ -6,9 +6,9 @@ import { formatPrice } from '../../../utils/formatters';
 import { toast } from 'sonner';
 import type { Auction, CreateAuctionPayload } from '../../../types/auction.types';
 import {
-  Gavel, CheckCircle, Activity, TrendingUp, Users,
+  Gavel, CheckCircle, Activity, TrendingUp,
   ArrowRight, X, Building2, MapPin, Plus, Loader2,
-  CalendarClock, ShieldAlert
+  CalendarClock, ShieldAlert, LayoutGrid
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -27,6 +27,10 @@ const STATUS_CFG: Record<string, { label: string; cls: string }> = {
   ended:      { label: 'Closed',   cls: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
   cancelled:  { label: 'Cancelled', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
 };
+
+// ─── Tab type ─────────────────────────────────────────────────────────────────
+const TABS = ['All', 'Highest Bids', 'Scheduled', 'Live', 'Closed'] as const;
+type Tab = typeof TABS[number];
 
 // ─── Create Auction Modal ─────────────────────────────────────────────────────
 interface CreateAuctionModalProps {
@@ -154,7 +158,7 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
               disabled={isPending}
               className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-black font-bold hover:bg-yellow-400 transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
             >
-              {isPending ? <><Loader2 size={16} className="animate-spin" /> Creating...</> : <><Gavel size={16} /> Create Auction</>}
+              {isPending ? <><Loader2 size={16} className="animate-spin" />Creating...</> : <><Gavel size={16} />Create Auction</>}
             </button>
           </div>
         </form>
@@ -163,7 +167,7 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
   );
 }
 
-// ─── Auction Card (for dashboard list) ───────────────────────────────────────
+// ─── Auction Row Card ─────────────────────────────────────────────────────────
 interface AuctionListCardProps { auction: Auction; onManage: () => void }
 
 function AuctionListCard({ auction, onManage }: AuctionListCardProps) {
@@ -248,13 +252,53 @@ function EligiblePropertyCard({ property, onCreateAuction }: EligiblePropertyCar
   );
 }
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
-const TABS = ['All', 'Scheduled', 'Live', 'Closed'] as const;
-type Tab = typeof TABS[number];
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  color: string;
+  isActive: boolean;
+  onClick: () => void;
+  isLoading: boolean;
+}
 
+function StatCard({ label, value, icon: Icon, color, isActive, onClick, isLoading }: StatCardProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`relative p-6 bg-dark-card border rounded-2xl overflow-hidden group w-full text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+        isActive
+          ? 'border-primary shadow-[0_0_20px_rgba(255,215,0,0.15)]'
+          : 'border-dark-border hover:border-primary/40'
+      }`}
+    >
+      {/* Background icon watermark */}
+      <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-300">
+        <Icon size={100} />
+      </div>
+
+      {/* Active indicator dot */}
+      {isActive && (
+        <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse" />
+      )}
+
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-black/40 border border-dark-border ${color}`}>
+        <Icon size={20} />
+      </div>
+      <p className="text-3xl font-display font-bold mb-1 text-white">
+        {isLoading ? '—' : value}
+      </p>
+      <p className="text-xs text-muted font-bold uppercase tracking-wider">{label}</p>
+    </button>
+  );
+}
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function SellerAuctionDashboard() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('All');
+  // 'All' means no filter from stat card; tabs still work independently
+  const [activeTab, setActiveTab] = useState<Tab>('All');
   const [modalProperty, setModalProperty] = useState<any>(null);
 
   // Fetch all seller auctions
@@ -272,35 +316,70 @@ export default function SellerAuctionDashboard() {
   const stats = auctionData?.stats ?? { total: 0, active: 0, completed: 0, totalBids: 0, highestBid: 0, totalViews: 0 };
   const allAuctions: Auction[] = auctionData?.auctions ?? [];
 
-  // Derive scheduled count from auction list (backend stats.active = live only)
   const scheduledCount = allAuctions.filter(a => a.status === 'scheduled').length;
-  const liveCount = allAuctions.filter(a => a.status === 'live').length;
-  const closedCount = allAuctions.filter(a => a.status === 'completed' || a.status === 'ended').length;
+  const liveCount      = allAuctions.filter(a => a.status === 'live').length;
+  const closedCount    = allAuctions.filter(a => a.status === 'completed' || a.status === 'ended').length;
 
-  // Properties eligible for auction: approved + no existing auction
+  // Properties eligible for auction
   const propertyIdsWithAuction = new Set(allAuctions.map(a => a.propertyId));
   const eligibleProperties = (properties as any[]).filter(p => {
     const status = p.status ?? p.verificationStatus;
     return (status === 'approved' || status === 'verified') && !p.isAuctionRequested && !propertyIdsWithAuction.has(p.propertyId);
   });
 
-  // Filter auctions by tab
-  const filteredAuctions = allAuctions.filter(a => {
+  // Filter auctions by active tab
+  let filteredAuctions = allAuctions.filter(a => {
     const s = a.status;
-    if (tab === 'All') return true;
-    if (tab === 'Scheduled') return s === 'scheduled';
-    if (tab === 'Live') return s === 'live';
-    if (tab === 'Closed') return s === 'completed' || s === 'ended' || s === 'cancelled';
+    if (activeTab === 'All')       return true;
+    if (activeTab === 'Scheduled') return s === 'scheduled';
+    if (activeTab === 'Live')      return s === 'live';
+    if (activeTab === 'Closed')    return s === 'completed' || s === 'ended' || s === 'cancelled';
+    if (activeTab === 'Highest Bids') return a.currentHighestBid > 0;
     return true;
   });
 
+  if (activeTab === 'Highest Bids') {
+    filteredAuctions = filteredAuctions.sort((a, b) => (b.currentHighestBid || 0) - (a.currentHighestBid || 0));
+  }
+
+  // Stat cards — each maps to a tab filter
   const statCards = [
-    { label: 'Total Auctions', value: stats.total, icon: Gavel, color: 'text-primary' },
-    { label: 'Scheduled', value: scheduledCount, icon: CalendarClock, color: 'text-blue-400' },
-    { label: 'Live', value: liveCount, icon: Activity, color: 'text-emerald-400' },
-    { label: 'Closed', value: closedCount, icon: CheckCircle, color: 'text-gray-400' },
-    { label: 'Total Bids', value: stats.totalBids, icon: Users, color: 'text-yellow-400' },
-    { label: 'Highest Bid', value: formatPrice(stats.highestBid || 0), icon: TrendingUp, color: 'text-primary' },
+    {
+      label: 'Total Auctions',
+      value: allAuctions.length,
+      icon: LayoutGrid,
+      color: 'text-primary',
+      tab: 'All' as Tab,
+    },
+    {
+      label: 'Scheduled',
+      value: scheduledCount,
+      icon: CalendarClock,
+      color: 'text-blue-400',
+      tab: 'Scheduled' as Tab,
+    },
+    {
+      label: 'Live Now',
+      value: liveCount,
+      icon: Activity,
+      color: 'text-emerald-400',
+      tab: 'Live' as Tab,
+    },
+    {
+      label: 'Closed',
+      value: closedCount,
+      icon: CheckCircle,
+      color: 'text-gray-400',
+      tab: 'Closed' as Tab,
+    },
+
+    {
+      label: 'Highest Bid',
+      value: typeof stats.highestBid === 'number' ? formatPrice(stats.highestBid) : '₹0',
+      icon: TrendingUp,
+      color: 'text-primary',
+      tab: 'Highest Bids' as Tab,
+    },
   ];
 
   const isLoading = auctionsLoading || propsLoading;
@@ -320,23 +399,34 @@ export default function SellerAuctionDashboard() {
 
       <div className="max-w-[1400px] mx-auto px-4 md:px-12 py-12 space-y-12">
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {statCards.map((s) => (
-            <div key={s.label} className="p-6 bg-dark-card border border-dark-border rounded-2xl hover:border-primary/40 transition-all duration-300 relative overflow-hidden group">
-              <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-300">
-                <s.icon size={100} />
-              </div>
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-black/40 border border-dark-border ${s.color}`}>
-                <s.icon size={20} />
-              </div>
-              <p className="text-3xl font-display font-bold mb-1">{isLoading ? '—' : s.value}</p>
-              <p className="text-xs text-muted font-bold uppercase tracking-wider">{s.label}</p>
-            </div>
-          ))}
+        {/* ── Stat Cards (clickable → filter) ──────────────────────────────── */}
+        <div>
+          <p className="text-xs text-muted font-bold uppercase tracking-widest mb-4">
+            Click any card to filter your auctions below
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {statCards.map((s) => (
+              <StatCard
+                key={s.label}
+                label={s.label}
+                value={s.value}
+                icon={s.icon}
+                color={s.color}
+                isActive={
+                  // "Total Auctions" lights up when All is active
+                  // Other cards light up when their specific tab is active
+                  s.label === 'Total Auctions'
+                    ? activeTab === 'All'
+                    : activeTab === s.tab
+                }
+                onClick={() => setActiveTab(s.tab)}
+                isLoading={isLoading}
+              />
+            ))}
+          </div>
         </div>
 
-        {/* Eligible Properties */}
+        {/* ── Properties Ready for Auction ─────────────────────────────────── */}
         {(eligibleProperties.length > 0 || propsLoading) && (
           <div>
             <div className="flex items-center gap-3 mb-6">
@@ -364,24 +454,38 @@ export default function SellerAuctionDashboard() {
           </div>
         )}
 
-        {/* Auctions List */}
+        {/* ── Auctions List (filtered) ──────────────────────────────────────── */}
         <div className="bg-dark-card border border-dark-border rounded-2xl p-6 md:p-8">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-display font-bold">Your Auctions</h2>
+            <div>
+              <h2 className="text-2xl font-display font-bold">Your Auctions</h2>
+              {activeTab !== 'All' && (
+                <p className="text-sm text-muted mt-1">
+                  Showing <span className="text-primary font-bold">{activeTab}</span> auctions
+                  &nbsp;·&nbsp;
+                  <button
+                    onClick={() => setActiveTab('All')}
+                    className="text-secondary hover:text-white underline underline-offset-2 transition-colors"
+                  >
+                    Clear filter
+                  </button>
+                </p>
+              )}
+            </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tab Pills */}
           <div className="flex gap-1 bg-black/40 border border-dark-border rounded-xl p-1 mb-8 w-fit">
             {TABS.map(t => (
               <button
                 key={t}
-                onClick={() => setTab(t)}
+                onClick={() => setActiveTab(t)}
                 className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                  tab === t ? 'bg-primary text-black' : 'text-muted hover:text-white'
+                  activeTab === t ? 'bg-primary text-black' : 'text-muted hover:text-white'
                 }`}
               >
                 {t}
-                {t !== 'All' && (
+                {t !== 'All' && t !== 'Highest Bids' && (
                   <span className="ml-2 text-[10px] font-bold opacity-70">
                     {t === 'Scheduled' ? scheduledCount : t === 'Live' ? liveCount : closedCount}
                   </span>
@@ -390,6 +494,7 @@ export default function SellerAuctionDashboard() {
             ))}
           </div>
 
+          {/* Auction List */}
           {auctionsLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map(i => <div key={i} className="h-24 bg-dark-border/40 rounded-xl animate-pulse" />)}
@@ -397,13 +502,15 @@ export default function SellerAuctionDashboard() {
           ) : filteredAuctions.length === 0 ? (
             <div className="text-center py-20 border border-dashed border-dark-border rounded-xl bg-black/20">
               <Gavel size={40} className="mx-auto mb-4 text-muted opacity-30" />
-              <h3 className="font-display font-bold text-white mb-2">No {tab !== 'All' ? tab : ''} Auctions</h3>
+              <h3 className="font-display font-bold text-white mb-2">
+                No {activeTab !== 'All' ? activeTab : ''} Auctions
+              </h3>
               <p className="text-muted text-sm max-w-sm mx-auto mb-6">
-                {tab === 'All'
+                {activeTab === 'All'
                   ? "You haven't created any auctions yet. Select an approved property above to get started."
-                  : `No ${tab.toLowerCase()} auctions at this time.`}
+                  : `No ${activeTab.toLowerCase()} auctions at this time.`}
               </p>
-              {tab === 'All' && (
+              {activeTab === 'All' && (
                 <button
                   onClick={() => navigate('/seller/my-properties?filter=approved')}
                   className="px-6 py-2.5 bg-primary text-black font-bold rounded-lg hover:bg-yellow-400 transition-colors text-sm"

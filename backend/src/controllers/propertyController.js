@@ -123,29 +123,47 @@ export const deleteProperty = async (req, res, next) => {
 
 // POST /v1/properties/:id/interest
 export const expressInterest = async (req, res, next) => {
-  try {
-    const buyerId = req.user.userId;
-    const buyerName = req.user.name || 'Buyer';
-    const { id: propertyId } = req.params;
+    try {
+      const buyerId = req.user.userId;
+      const buyerName = req.user.name || 'Buyer';
+      const { id: propertyId } = req.params;
+      const isAuction = req.query.source === 'auction';
+  
+      const property = await PropertyModel.getProperty(propertyId);
+      if (!property) {
+        return res.status(HTTP.NOT_FOUND).json({
+          success: false,
+          error: { code: 'PROP_001', message: 'Property not found' },
+        });
+      }
+  
+      // Prevent buyer from expressing interest in own property
+      if (property.sellerId === buyerId) {
+        return res.status(HTTP.FORBIDDEN).json({
+          success: false,
+          error: { message: 'Cannot express interest in your own property' },
+        });
+      }
+  
+      // If this is just for an auction interest list, skip creating a formal Inquiry/chat request
+      if (isAuction) {
+        await PropertyModel.addInterest(propertyId, buyerId);
+        
+        // Notify the seller
+        import('../websocket/server.js').then(({ io }) => {
+          if (io) {
+            io.to(`user_${property.sellerId}`).emit('notification', {
+              type: 'auction_interest',
+              message: `${buyerName} is interested in your scheduled auction for ${property.title}`
+            });
+          }
+        }).catch(console.error);
 
-    const property = await PropertyModel.getProperty(propertyId);
-    if (!property) {
-      return res.status(HTTP.NOT_FOUND).json({
-        success: false,
-        error: { code: 'PROP_001', message: 'Property not found' },
-      });
-    }
+        return res.status(HTTP.CREATED).json({ success: true, data: { message: 'Interest registered for auction' } });
+      }
 
-    // Prevent buyer from expressing interest in own property
-    if (property.sellerId === buyerId) {
-      return res.status(HTTP.FORBIDDEN).json({
-        success: false,
-        error: { message: 'Cannot express interest in your own property' },
-      });
-    }
-
-    // Check for existing pending inquiry
-    const existing = await InquiryModel.getPendingInquiriesForProperty(propertyId, buyerId);
+      // Check for existing pending inquiry (for standard property inquiries)
+      const existing = await InquiryModel.getPendingInquiriesForProperty(propertyId, buyerId);
     if (existing.length > 0) {
       return res.status(HTTP.CONFLICT).json({
         success: false,

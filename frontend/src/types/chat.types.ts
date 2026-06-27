@@ -7,7 +7,9 @@ export type MessageType =
   | 'meet_confirmation'
   | 'payment_buyer'
   | 'payment_seller'
-  | 'deal_closed';
+  | 'deal_closed'
+  | 'auction_winner';
+
 
 export type DealStatus =
   | 'requested'
@@ -38,6 +40,9 @@ export interface ChatRoom {
   propertyTitle?: string;
   buyerName?: string;
   lastMessage?: Message;
+  /** 'auction' for auction-winner rooms, undefined/null for inquiry-based rooms */
+  source?: 'auction' | null;
+  auctionId?: string;
   // Deal state
   dealStatus?: DealStatus;
   meetProposal?: MeetProposal;

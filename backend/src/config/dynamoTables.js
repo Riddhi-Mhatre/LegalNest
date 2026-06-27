@@ -61,7 +61,11 @@ const TABLE_DEFINITIONS = [
   {
     tableName: env.DYNAMODB_AUCTIONS_TABLE,
     pk: 'auctionId', pkType: 'S',
-    gsis: [gsi('status-index', 'status')],
+    gsis: [
+      gsi('status-index',     'status'),      // query by lifecycle status
+      gsi('sellerId-index',   'sellerId'),    // query all auctions for a seller
+      gsi('propertyId-index', 'propertyId'), // look up auction for a property
+    ],
   },
 
   // ── Bids (PK: auctionId, SK: timestamp) ─────────────────────────────────

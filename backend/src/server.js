@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { logger } from './utils/logger.js';
 import { env } from './config/env.js';
 import { provisionTables } from './config/dynamoTables.js';
+import { startAuctionScheduler } from './services/auctionEngine.js';
 
 const httpServer = createServer(app);
 
@@ -14,9 +15,13 @@ initWebSocket(httpServer);
 // Provision DynamoDB tables before accepting traffic
 provisionTables()
   .then(() => {
+    // ✅ Start auction lifecycle scheduler after tables are ready
+    startAuctionScheduler();
+
     httpServer.listen(env.PORT, () => {
       logger.info(`🚀 LegalNest backend running on port ${env.PORT}`);
       logger.info(`📡 WebSocket server attached`);
+      logger.info(`⏱️  Auction scheduler running`);
       logger.info(`🌍 Environment: ${env.NODE_ENV}`);
     });
   })

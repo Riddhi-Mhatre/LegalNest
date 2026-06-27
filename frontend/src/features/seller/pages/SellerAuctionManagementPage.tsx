@@ -2,16 +2,18 @@ import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getSellerAuction, scheduleSellerAuction,
-  getSellerAuctionBids, getInterestedBuyers, getSellerProperties
+  getSellerAuctionBids, getInterestedBuyers, getSellerProperties,
+  earlyCloseAuction
 } from '../../../services/sellerService';
 import { formatPrice, formatDateTime } from '../../../utils/formatters';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useAuctionStore } from '../../../store/auctionStore';
 import type { Bid, CreateAuctionPayload } from '../../../types/auction.types';
 import {
   ArrowLeft, Gavel, Activity, Users, TrendingUp,
-  Clock, CheckCircle, Building2, MapPin, Loader2,
-  CalendarClock, DollarSign, Target
+  CheckCircle, Building2, MapPin, Loader2,
+  CalendarClock, DollarSign, Target, StopCircle
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -107,6 +109,36 @@ function CreateAuctionForm({ propertyId, onSuccess }: CreateFormProps) {
   );
 }
 
+// ─── Early-Close Countdown Button ────────────────────────────────────────────
+function EarlyCloseCountdown({ endTime }: { endTime: string }) {
+  const calc = () => Math.max(0, Math.floor((new Date(endTime).getTime() - Date.now()) / 1000));
+  const [secs, setSecs] = useState(calc);
+
+  useEffect(() => {
+    if (secs <= 0) return;
+    const id = setInterval(() => setSecs(calc), 1000);
+    return () => clearInterval(id);
+  });
+
+  if (secs <= 0) return <span className="font-mono font-black tracking-widest">Closing…</span>;
+
+  const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+  const ss = String(secs % 60).padStart(2, '0');
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <StopCircle size={15} className="shrink-0" />
+      Auction closing in
+      <span
+        className="font-mono font-black text-base tracking-widest px-2 py-0.5 rounded"
+        style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}
+      >
+        {mm}:{ss}
+      </span>
+    </span>
+  );
+}
+
 // ─── Stat Mini Card ───────────────────────────────────────────────────────────
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: any; icon: any; color: string }) {
   return (
@@ -138,13 +170,54 @@ export default function SellerAuctionManagementPage() {
     enabled: !!propertyId,
   });
 
-  // Bids — poll every 5s when live
-  const { data: bids = [] } = useQuery<Bid[]>({
+  // Track end-time after early-close so the countdown button can render
+  // Set optimistically when the user confirms, so button switches immediately
+  const [earlyCloseEndTime, setEarlyCloseEndTime] = useState<string | null>(null);
+
+  const { mutate: closeEarly, isPending: closingEarly } = useMutation({
+    mutationFn: () => earlyCloseAuction(propertyId!),
+    onSuccess: (res) => {
+      // If server returns a more accurate endTime, use it
+      const serverEnd = res?.newEndTime;
+      if (serverEnd) setEarlyCloseEndTime(serverEnd);
+      toast.success('Auction scheduled to close early (15 mins remaining)');
+      refetchAuction();
+    },
+    onError: (err: any) => {
+      // Reset so the button comes back and seller can try again
+      setEarlyCloseEndTime(null);
+      toast.error(err.response?.data?.error?.message || 'Failed to close auction early');
+    }
+  });
+
+  // Bids — fetch initially for fallback
+  const { data: initialBids } = useQuery<Bid[]>({
     queryKey: ['sellerAuctionBids', propertyId],
     queryFn: () => getSellerAuctionBids(propertyId!),
     enabled: !!auction?.auctionId,
-    refetchInterval: auction?.status === 'live' ? 5000 : false,
   });
+
+  const { currentAuction, setAuction, connectToAuction, disconnectFromAuction, bidHistory, setBidHistory } = useAuctionStore();
+
+  useEffect(() => {
+    if (auction) setAuction(auction);
+  }, [auction, setAuction]);
+
+  useEffect(() => {
+    if (initialBids) {
+      setBidHistory(initialBids);
+    }
+  }, [initialBids, setBidHistory]);
+
+  useEffect(() => {
+    if (auction?.auctionId) {
+      connectToAuction(auction.auctionId);
+      return () => disconnectFromAuction(auction.auctionId);
+    }
+  }, [auction?.auctionId, connectToAuction, disconnectFromAuction]);
+
+  const activeAuction = currentAuction || auction;
+  const bids = bidHistory.length > 0 ? bidHistory : (initialBids || []);
 
   // Interested buyers
   const { data: buyers = [] } = useQuery({
@@ -161,8 +234,8 @@ export default function SellerAuctionManagementPage() {
     );
   }
 
-  const statusCfg = auction ? (STATUS_CFG[auction.status] ?? STATUS_CFG.scheduled) : null;
-  const isLive = auction?.status === 'live';
+  const statusCfg = activeAuction ? (STATUS_CFG[activeAuction.status] ?? STATUS_CFG.scheduled) : null;
+  const isLive = activeAuction?.status === 'live';
   const highestBid = bids.length > 0 ? Math.max(...bids.map((b: Bid) => b.amount)) : 0;
   const highestBidder = bids.find((b: Bid) => b.amount === highestBid);
   const totalBids = bids.length;
@@ -218,17 +291,16 @@ export default function SellerAuctionManagementPage() {
                 </div>
               </div>
 
-              {!auction ? (
+              {!activeAuction ? (
                 <CreateAuctionForm propertyId={propertyId!} onSuccess={() => refetchAuction()} />
               ) : (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <StatCard label="Starting Price" value={formatPrice(auction.startingPrice)} icon={DollarSign} color="text-muted" />
-                    <StatCard label="Reserve Price" value={formatPrice(auction.reservePrice)} icon={Target} color="text-yellow-400" />
-                    <StatCard label="Bid Increment" value={formatPrice(auction.bidIncrement ?? 0)} icon={TrendingUp} color="text-secondary" />
-                    <StatCard label="Current Bid" value={formatPrice(auction.currentHighestBid || auction.startingPrice)} icon={TrendingUp} color="text-primary" />
+                    <StatCard label="Starting Price" value={formatPrice(activeAuction.startingPrice)} icon={DollarSign} color="text-muted" />
+                    <StatCard label="Reserve Price" value={formatPrice(activeAuction.reservePrice)} icon={Target} color="text-yellow-400" />
+                    <StatCard label="Bid Increment" value={formatPrice(activeAuction.bidIncrement ?? 0)} icon={TrendingUp} color="text-secondary" />
+                    <StatCard label="Current Bid" value={formatPrice(activeAuction.currentHighestBid || activeAuction.startingPrice)} icon={TrendingUp} color="text-primary" />
                     <StatCard label="Total Bids" value={totalBids} icon={Users} color="text-blue-400" />
-                    <StatCard label="Extensions" value={`${auction.extensionCount ?? 0} / ${auction.maxExtensions ?? 3}`} icon={Clock} color="text-muted" />
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -236,21 +308,66 @@ export default function SellerAuctionManagementPage() {
                       <p className="text-xs text-muted font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <CalendarClock size={12} /> Start Time
                       </p>
-                      <p className="font-bold text-white text-sm">{auction.startTime ? formatDateTime(auction.startTime) : '—'}</p>
+                      <p className="font-bold text-white text-sm">{activeAuction.startTime ? formatDateTime(activeAuction.startTime) : '—'}</p>
                     </div>
                     <div className="p-4 bg-black/40 border border-dark-border rounded-xl">
                       <p className="text-xs text-muted font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <CalendarClock size={12} /> End Time
                       </p>
-                      <p className="font-bold text-white text-sm">{auction.endTime ? formatDateTime(auction.endTime) : '—'}</p>
+                      <p className="font-bold text-white text-sm">{activeAuction.endTime ? formatDateTime(activeAuction.endTime) : '—'}</p>
                     </div>
                   </div>
+
+                  {['completed', 'ended'].includes(activeAuction.status) ? (
+                    <div className="pt-4 border-t border-dark-border mt-4">
+                      <div className="w-full flex items-center justify-center gap-2 py-3 border font-bold rounded-xl bg-gray-500/10 text-gray-400 border-gray-500/20">
+                        <CheckCircle size={16} /> Auction Ended
+                      </div>
+                    </div>
+                  ) : isLive && activeAuction.currentHighestBid >= activeAuction.reservePrice ? (
+                    <div className="pt-4 border-t border-dark-border mt-4">
+                      {(() => {
+                        const countdownEnd = earlyCloseEndTime ?? activeAuction.endTime;
+                        const isEarlyClosed = !!earlyCloseEndTime;
+
+                        const handleClick = () => {
+                          if (isEarlyClosed || closingEarly) return;
+                          if (window.confirm('Are you sure you want to close this auction early? It will end in 15 minutes.')) {
+                            // Set optimistically BEFORE the async call so React re-renders immediately
+                            const optimisticEnd = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+                            setEarlyCloseEndTime(optimisticEnd);
+                            closeEarly();
+                          }
+                        };
+
+                        return (
+                          <button
+                            onClick={handleClick}
+                            disabled={closingEarly || isEarlyClosed}
+                            className={`w-full flex items-center justify-center gap-2 py-3 border font-bold rounded-xl transition-all disabled:cursor-not-allowed
+                              ${ isEarlyClosed
+                                  ? 'bg-red-500/5 border-red-500/40 text-red-400 animate-pulse'
+                                  : 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500 hover:text-white'
+                              }`}
+                          >
+                            {isEarlyClosed ? (
+                              <EarlyCloseCountdown endTime={countdownEnd} />
+                            ) : closingEarly ? (
+                              <><Loader2 size={16} className="animate-spin" /> Scheduling…</>
+                            ) : (
+                              <><StopCircle size={16} /> Close Auction Early (15 Mins)</>
+                            )}
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  ) : null}
                 </div>
               )}
             </div>
 
             {/* Bid History */}
-            {auction && (
+            {activeAuction && (
               <div className="bg-dark-card border border-dark-border rounded-2xl p-6 md:p-8">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-3">
@@ -354,7 +471,7 @@ export default function SellerAuctionManagementPage() {
             )}
 
             {/* Auction Stats */}
-            {auction && (
+            {activeAuction && (
               <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <CheckCircle size={16} className="text-secondary" />
@@ -362,9 +479,9 @@ export default function SellerAuctionManagementPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    { label: 'Highest Bid', value: formatPrice(auction.currentHighestBid || auction.startingPrice) },
-                    { label: 'Starting Price', value: formatPrice(auction.startingPrice) },
-                    { label: 'Reserve Price', value: formatPrice(auction.reservePrice) },
+                    { label: 'Highest Bid', value: formatPrice(activeAuction.currentHighestBid || activeAuction.startingPrice) },
+                    { label: 'Starting Price', value: formatPrice(activeAuction.startingPrice) },
+                    { label: 'Reserve Price', value: formatPrice(activeAuction.reservePrice) },
                     { label: 'Total Bids', value: totalBids },
                     { label: 'Unique Bidders', value: new Set(bids.map((b: Bid) => b.bidderId ?? b.userId)).size },
                   ].map(item => (

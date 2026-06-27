@@ -1,3 +1,4 @@
+// ─── Property Deal Suggestions ───────────────────────────────────────────────
 export const BUYER_SUGGESTIONS = [
   {
     category: 'Property Inquiry',
@@ -33,15 +34,6 @@ export const BUYER_SUGGESTIONS = [
       'Is the title deed verified?',
       'Are there any pending legal issues?',
       'Can I review the ownership documents?'
-    ]
-  },
-  {
-    category: 'Auction Related',
-    options: [
-      'When does the auction end?',
-      'What is the current highest bid?',
-      'How do I participate in this auction?',
-      'Can I place a bid now?'
     ]
   },
   {
@@ -102,15 +94,6 @@ export const SELLER_SUGGESTIONS = [
     ]
   },
   {
-    category: 'Auction Related',
-    options: [
-      'The auction will end on ______.',
-      'The current highest bid is ₹______.',
-      'You can participate directly from the auction page.',
-      'Congratulations! You are currently the highest bidder.'
-    ]
-  },
-  {
     category: 'Deal Completion',
     options: [
       'I am interested in proceeding further.',
@@ -119,4 +102,31 @@ export const SELLER_SUGGESTIONS = [
       'Thank you for choosing this property.'
     ]
   }
+];
+
+// ─── Auction Winner Chat Suggestions ─────────────────────────────────────────
+export const AUCTION_BUYER_SUGGESTIONS = [
+  '👋 Hello, I would like to proceed with the purchase.',
+  '📄 Please share the property documents.',
+  '📅 Can we schedule a meeting?',
+  '📍 Please share the property location.',
+  '📞 Can we exchange contact details?',
+  '🏠 Can I visit the property before proceeding?',
+  '⏰ When can we complete the verification process?',
+  '📝 What are the next steps for the purchase?',
+  '💰 Can we discuss the payment process?',
+  '✅ I am ready to proceed with the deal.',
+];
+
+export const AUCTION_SELLER_SUGGESTIONS = [
+  '🎉 Congratulations on winning the auction.',
+  '👋 Thank you for your interest. Let\'s proceed.',
+  '📄 I have shared the property documents.',
+  '📅 Please let me know your preferred meeting time.',
+  '📍 I have shared the property location.',
+  '📞 Please share your contact details.',
+  '🏠 You are welcome to visit the property.',
+  '📝 We can begin the documentation process.',
+  '💰 Let\'s discuss the payment process.',
+  '✅ Looking forward to completing the transaction.',
 ];

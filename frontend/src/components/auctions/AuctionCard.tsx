@@ -18,7 +18,7 @@ export function AuctionCard({ auction }: AuctionCardProps) {
   const city = property?.city ?? property?.location?.city ?? 'Unknown';
   const state = property?.state ?? property?.location?.state ?? 'India';
   const sellerName = (property as any)?.sellerName ?? 'Verified Seller';
-  const biddersCount = auction.bids?.length ?? 0;
+  const biddersCount = auction.totalBids ?? auction.bids?.length ?? 0;
 
   useEffect(() => {
     const calculateTimeLeft = () => {

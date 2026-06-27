@@ -45,6 +45,9 @@ export const queryProperties = async (filters) => {
   // Scan with filters – for production, use GSIs + ElasticSearch
   const items = await dynamo.scanItems(TABLE);
   return items.filter(p => {
+    // Filter out demo properties (they don't have a sellerId)
+    if (!p.sellerId) return false;
+
     if (filters.type && p.type !== filters.type) return false;
     const price = p.salePrice ?? p.price ?? 0;
     if (filters.minPrice && price < filters.minPrice) return false;

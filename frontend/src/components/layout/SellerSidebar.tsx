@@ -5,7 +5,6 @@ import {
   Building2, 
   Gavel, 
   CreditCard, 
-  FileText, 
   ShieldCheck,
   LogOut,
   MessageSquare,

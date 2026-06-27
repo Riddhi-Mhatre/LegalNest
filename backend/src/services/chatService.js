@@ -81,6 +81,59 @@ export const createChatRoom = async (buyerId, sellerId, propertyId, propertyTitl
   return room;
 };
 
+/**
+ * Creates a dedicated auction-winner chat room between the winning buyer and the seller.
+ * Seeds the room with a congratulatory system message so the conversation starts immediately.
+ *
+ * @param {string} buyerId   - userId of the winning bidder
+ * @param {string} sellerId  - userId of the property seller
+ * @param {string} propertyId
+ * @param {string} propertyTitle
+ * @param {string} buyerName - display name of the winner
+ * @param {string} auctionId
+ * @param {number} winningBid
+ * @returns {Promise<object>} the newly created room
+ */
+export const createAuctionWinnerRoom = async (
+  buyerId, sellerId, propertyId, propertyTitle, buyerName, auctionId, winningBid
+) => {
+  const roomId = generateUUID();
+  const now = new Date().toISOString();
+
+  const room = {
+    roomId,
+    buyerId,
+    sellerId,
+    propertyId: propertyId || null,
+    propertyTitle: propertyTitle || null,
+    buyerName: buyerName || null,
+    inquiryId: null,
+    auctionId: auctionId || null,
+    source: 'auction',           // distinguishes from inquiry-based rooms
+    createdAt: now,
+    isActive: true,
+    dealStatus: null,
+    meetProposal: null,
+    meetConfirmedDate: null,
+    buyerPaid: false,
+    sellerPaid: false,
+  };
+
+  await dynamoService.putItem(env.DYNAMODB_CHAT_ROOMS_TABLE, room);
+
+  // Seed the congratulatory system message
+  const winningBidFormatted = Number(winningBid).toLocaleString('en-IN');
+  await saveMessage(
+    roomId,
+    'system',
+    `🎉 Congratulations ${buyerName || 'Winner'}! You have won the auction for "${propertyTitle || 'this property'}" with a winning bid of ₹${winningBidFormatted}. Please use this chat to discuss further details and arrange an offline meeting with the seller.`,
+    'auction_winner',
+    { auctionId, winningBid, propertyId, propertyTitle }
+  );
+
+  return room;
+};
+
 // ─── Deal State Helpers ───────────────────────────────────────────────────────
 
 /**

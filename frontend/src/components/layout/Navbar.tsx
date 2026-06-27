@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../utils/constants';
-import { Bell, Home, LogOut, User, Gavel, ArrowLeft } from 'lucide-react';
+import { Bell, LogOut, User, ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 
 export const Navbar = () => {
