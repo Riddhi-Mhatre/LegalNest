@@ -3,6 +3,7 @@ import * as PropertyModel from '../models/dynamodb/PropertyModel.js';
 import * as PurchaseModel from '../models/dynamodb/PurchaseModel.js';
 import { generateUUID } from '../utils/helpers.js';
 import { HTTP } from '../utils/constants.js';
+import { createNotification } from '../services/notificationService.js';
 
 // GET /v1/chat/rooms
 export const getRooms = async (req, res, next) => {
@@ -32,7 +33,19 @@ export const sendMessage = async (req, res, next) => {
     const senderId = req.user.userId;
     const { roomId } = req.params;
     const { content, type, payload } = req.body;
+    
+    const room = await chatService.getRoom(roomId);
+    if (!room) {
+      return res.status(HTTP.NOT_FOUND).json({ success: false, error: 'Room not found' });
+    }
+
     const message = await chatService.saveMessage(roomId, senderId, content, type, payload);
+    
+    const recipientId = room.buyerId === senderId ? room.sellerId : room.buyerId;
+    if (recipientId) {
+      await createNotification(recipientId, 'chat_notification', 'New Chat Message', `You received a new message regarding ${room.propertyTitle || 'a property'}`, { roomId, messageId: message.messageId });
+    }
+
     res.status(HTTP.CREATED).json({ success: true, data: message });
   } catch (err) {
     next(err);
@@ -161,6 +174,9 @@ export const payDealFee = async (req, res, next) => {
           date: new Date().toISOString()
         });
       }
+
+      await createNotification(room.buyerId, 'deal_finalized', 'Deal Finalized', `Congratulations! The deal for ${room.propertyTitle} has been finalized.`, { propertyId: room.propertyId });
+      await createNotification(room.sellerId, 'deal_finalized', 'Deal Finalized', `Congratulations! The deal for ${room.propertyTitle} has been finalized.`, { propertyId: room.propertyId });
 
       msg = await chatService.saveDealSystemMessage(roomId, 'deal_closed', {}, '🎉 Deal successfully closed! Both parties have paid the platform fee.');
     } else {

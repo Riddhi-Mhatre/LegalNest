@@ -3,6 +3,7 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { S3Client } from '@aws-sdk/client-s3';
 import { SESClient } from '@aws-sdk/client-ses';
+import { SNSClient } from '@aws-sdk/client-sns';
 import { LocationClient } from '@aws-sdk/client-location';
 import { env } from './env.js';
 
@@ -26,8 +27,9 @@ export const s3Client = new S3Client({
   requestChecksumCalculation: 'WHEN_REQUIRED',
 });
 
-// SES
+// SES & SNS
 export const sesClient = new SESClient(clientConfig);
+export const snsClient = new SNSClient(clientConfig);
 
 // AWS Location
 export const locationClient = new LocationClient(clientConfig);

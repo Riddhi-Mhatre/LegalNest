@@ -26,18 +26,14 @@ export const getNotifications = () => {
 
 export const markNotificationRead = (notificationId: string) => {
   const role = useAuthStore.getState().user?.role;
-  if (role === 'buyer') {
-    return api.put(`/buyer/notifications/${notificationId}/read`).then(r => r.data);
-  }
-  return Promise.resolve();
+  const path = role === 'buyer' ? `/buyer/notifications/${notificationId}/read` : `/users/notifications/${notificationId}/read`;
+  return api.put(path).then(r => r.data);
 };
 
 export const deleteNotification = (notificationId: string) => {
   const role = useAuthStore.getState().user?.role;
-  if (role === 'buyer') {
-    return api.delete(`/buyer/notifications/${notificationId}`).then(r => r.data);
-  }
-  return Promise.resolve();
+  const path = role === 'buyer' ? `/buyer/notifications/${notificationId}` : `/users/notifications/${notificationId}`;
+  return api.delete(path).then(r => r.data);
 };
 
 export const getBuyerBids = () =>

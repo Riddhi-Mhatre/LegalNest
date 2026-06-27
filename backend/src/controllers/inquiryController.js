@@ -1,6 +1,7 @@
 import * as InquiryModel from '../models/dynamodb/InquiryModel.js';
 import * as chatService from '../services/chatService.js';
 import { HTTP } from '../utils/constants.js';
+import { createNotification } from '../services/notificationService.js';
 
 // GET /v1/inquiries/seller  — all inquiries sent to this seller
 export const getSellerInquiries = async (req, res, next) => {
@@ -54,6 +55,15 @@ export const acceptInquiry = async (req, res, next) => {
     // Update inquiry status
     await InquiryModel.updateInquiryStatus(inquiryId, 'accepted', room.roomId);
 
+    // Notify the buyer
+    await createNotification(
+      inquiry.buyerId,
+      'chat_notification', // mapping this to chat_notification type so it gets the Message icon
+      'Inquiry Accepted',
+      `The seller has accepted your inquiry for ${inquiry.propertyTitle}. You can now start chatting!`,
+      { inquiryId, propertyId: inquiry.propertyId, roomId: room.roomId }
+    );
+
     res.json({ success: true, data: { inquiry: { ...inquiry, status: 'accepted', roomId: room.roomId }, room } });
   } catch (err) {
     next(err);
@@ -78,6 +88,16 @@ export const rejectInquiry = async (req, res, next) => {
     }
 
     await InquiryModel.updateInquiryStatus(inquiryId, 'rejected');
+
+    // Notify the buyer
+    await createNotification(
+      inquiry.buyerId,
+      'inquiry_rejected',
+      'Inquiry Declined',
+      `The seller has declined your inquiry for ${inquiry.propertyTitle}.`,
+      { inquiryId, propertyId: inquiry.propertyId }
+    );
+
     res.json({ success: true, data: { inquiryId, status: 'rejected' } });
   } catch (err) {
     next(err);
