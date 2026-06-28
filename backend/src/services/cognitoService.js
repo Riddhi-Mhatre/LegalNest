@@ -82,16 +82,7 @@ export const signOut = async (accessToken) => {
   return cognitoClient.send(new GlobalSignOutCommand({ AccessToken: accessToken }));
 };
 
-export const requestOtp = async (phone) => {
-  // Cognito custom auth flow or SMS OTP via SNS
-  // Placeholder implementation
-  return { message: `OTP sent to ${phone}` };
-};
 
-export const verifyOtp = async (phone, code) => {
-  // Placeholder: verify code via Cognito custom auth
-  return { verified: true, phone };
-};
 
 export const confirmSignUp = async (email, code) => {
   return cognitoClient.send(

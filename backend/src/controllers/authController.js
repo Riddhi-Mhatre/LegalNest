@@ -100,23 +100,23 @@ export const respondToChallenge = async (req, res, next) => {
   }
 };
 
-// POST /v1/auth/otp/request
-export const requestOtp = async (req, res, next) => {
+// POST /v1/auth/forgot-password
+export const forgotPassword = async (req, res, next) => {
   try {
-    const { phone } = req.body;
-    await cognitoService.requestOtp(phone);
-    res.json({ success: true, data: { message: 'OTP sent to ' + phone } });
+    const { email } = req.body;
+    await cognitoService.forgotPassword(email);
+    res.json({ success: true, data: { message: 'Password reset code sent to ' + email } });
   } catch (err) {
     next(err);
   }
 };
 
-// POST /v1/auth/otp/verify
-export const verifyOtp = async (req, res, next) => {
+// POST /v1/auth/reset-password
+export const resetPassword = async (req, res, next) => {
   try {
-    const { phone, code } = req.body;
-    const result = await cognitoService.verifyOtp(phone, code);
-    res.json({ success: true, data: result });
+    const { email, code, newPassword } = req.body;
+    await cognitoService.confirmForgotPassword(email, code, newPassword);
+    res.json({ success: true, data: { message: 'Password reset successfully' } });
   } catch (err) {
     next(err);
   }

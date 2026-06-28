@@ -42,7 +42,11 @@ export default function BuyerPurchasesPage() {
           (purchases as any[]).map((purchase) => (
             <div key={purchase.purchaseId} className="bg-dark-card border border-dark-border rounded-xl p-6 flex flex-col md:flex-row gap-6 hover:border-secondary/50 transition-all duration-300">
               <div className="w-full md:w-48 h-32 shrink-0 rounded-lg overflow-hidden bg-dark flex items-center justify-center border border-dark-border">
-                <Building2 size={40} className="text-muted opacity-30" />
+                {purchase.property?.images?.[0] ? (
+                  <img src={purchase.property.images[0]} alt={purchase.propertyTitle || 'Property'} className="w-full h-full object-cover" />
+                ) : (
+                  <Building2 size={40} className="text-muted opacity-30" />
+                )}
               </div>
               
               <div className="flex-1 flex flex-col justify-between">

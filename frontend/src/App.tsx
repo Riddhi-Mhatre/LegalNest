@@ -17,6 +17,7 @@ function ScrollToTop() {
 
 import { Loader } from './components/common/Loader';
 import { SplashScreen } from './components/common/SplashScreen';
+import { useSilentRefresh } from './hooks/useSilentRefresh';
 
 // ─── Public / Shared Pages ──────────────────────────────────────────────────
 const LandingPage              = lazy(() => import('./pages/LandingPage'));
@@ -55,6 +56,9 @@ import { SellerLayout } from './components/layout/SellerLayout';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  
+  // Proactively keeps the session token alive
+  useSilentRefresh();
 
   if (showSplash) {
     return <SplashScreen onComplete={() => setShowSplash(false)} />;

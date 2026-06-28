@@ -163,7 +163,7 @@ export const expressInterest = async (req, res, next) => {
           }
         }).catch(console.error);
 
-        await createNotification(property.sellerId, 'buyer_interest', 'New Buyer Interest', `${buyerName} is interested in your scheduled auction for ${property.title}`, { propertyId });
+        await createNotification(property.sellerId, 'auction_interest', 'New Auction Interest', `${buyerName} is interested in your scheduled auction for ${property.title}`, { propertyId });
 
         return res.status(HTTP.CREATED).json({ success: true, data: { message: 'Interest registered for auction' } });
       }

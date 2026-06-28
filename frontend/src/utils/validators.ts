@@ -17,6 +17,16 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Password required'),
 });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email'),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email('Invalid email'),
+  code: z.string().min(6, 'Code must be at least 6 characters'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters'),
+});
+
 export const bidSchema = z.object({
   amount: z.number({ invalid_type_error: 'Enter a valid number' }).positive('Bid must be positive').int('Bid must be a whole number'),
 });
@@ -39,6 +49,8 @@ export type RegisterFormData = z.infer<typeof registerSchema>;
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type BidFormData = z.infer<typeof bidSchema>;
 export type PropertyFormData = z.infer<typeof propertySchema>;
+export type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export const verifySchema = z.object({
   email: z.string().email('Invalid email'),

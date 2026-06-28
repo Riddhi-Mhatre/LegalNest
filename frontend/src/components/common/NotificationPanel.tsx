@@ -47,6 +47,8 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       case 'auction':
       case 'auction_won':
       case 'outbid':
+      case 'bid_placed':
+      case 'bid_received':
         return Gavel;
       case 'legal':
       case 'document_verified':
@@ -54,6 +56,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       case 'property_listed':
         return Building;
       case 'buyer_interest':
+      case 'auction_interest':
         return Heart;
       case 'chat_notification':
         return MessageSquare;
@@ -72,13 +75,16 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
         return { color: 'text-destructive', bg: 'bg-destructive/10' };
       case 'auction_won':
       case 'deal_finalized':
+      case 'bid_received':
         return { color: 'text-emerald-400', bg: 'bg-emerald-400/10' };
       case 'legal':
       case 'document_verified':
         return { color: 'text-secondary', bg: 'bg-secondary/10' };
       case 'property_listed':
+      case 'bid_placed':
         return { color: 'text-blue-400', bg: 'bg-blue-400/10' };
       case 'buyer_interest':
+      case 'auction_interest':
         return { color: 'text-pink-400', bg: 'bg-pink-400/10' };
       case 'chat_notification':
         return { color: 'text-purple-400', bg: 'bg-purple-400/10' };

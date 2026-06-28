@@ -9,6 +9,7 @@ import * as chatService from './chatService.js';
 import { generateUUID } from '../utils/helpers.js';
 import { AUCTION_CONFIG } from '../utils/constants.js';
 import { logger } from '../utils/logger.js';
+import { createNotification } from './notificationService.js';
 
 
 // Singleton io reference – set by WebSocket server
@@ -79,6 +80,29 @@ export const placeBid = async (auctionId, userId, amount) => {
       timestamp,
       auctionId,
     });
+  }
+
+  // Generate DB notifications so they show in the panel
+  try {
+    // Notify buyer
+    await createNotification(
+      userId,
+      'bid_placed',
+      'Bid Placed Successfully',
+      `Your bid of ₹${amount.toLocaleString('en-IN')} was placed on auction ${auctionId}`
+    );
+    // Notify seller
+    if (auction.sellerId) {
+      await createNotification(
+        auction.sellerId,
+        'bid_received',
+        'New Bid Received',
+        `A new bid of ₹${amount.toLocaleString('en-IN')} was placed on your auction.`,
+        { auctionId }
+      );
+    }
+  } catch (err) {
+    logger.error(`Failed to create bid notifications: ${err.message}`);
   }
 
   return { success: true, newBid: amount, auctionId };

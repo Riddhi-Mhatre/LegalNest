@@ -5,34 +5,47 @@ import { BidTable } from '../../../components/auctions/BidTable';
 import { getBuyerBids } from '../../../services/userService';
 
 export default function BuyerBidsPage() {
-  const [searchParams] = useSearchParams();
-  const filter = searchParams.get('filter');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = searchParams.get('filter') || 'all';
   
   const { data: bids = [], isLoading } = useQuery({
     queryKey: ['buyer', 'bids-list-page'],
     queryFn: getBuyerBids,
   });
 
+  // Deduplicate bids to only keep the highest bid per auction/property
+  const highestBidsMap = new Map();
+  for (const b of (bids as any[])) {
+    const existing = highestBidsMap.get(b.auctionId || b.propertyId);
+    if (!existing || b.myBid > existing.myBid) {
+      highestBidsMap.set(b.auctionId || b.propertyId, b);
+    }
+  }
+  const uniqueHighestBids = Array.from(highestBidsMap.values());
+
   const filteredBids = filter === 'won'
-    ? bids.filter((b: any) => b.isWinner || b.status === 'won')
+    ? uniqueHighestBids.filter((b: any) => (b.isWinner || b.status === 'won') && b.auctionStatus === 'completed')
+    : filter === 'active'
+    ? uniqueHighestBids.filter((b: any) => b.auctionStatus === 'live')
     : bids;
 
   const mappedBids = filteredBids.map((b: any) => ({
     id: b.bidId,
     propertyTitle: b.propertyName ?? 'Unknown Property',
-    image: b.image || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=80&q=80',
+    image: b.image || b.propertyImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=80&q=80',
     currentBid: b.currentHighestBid,
     myBid: b.myBid,
-    status: b.isWinner || b.status === 'won' ? 'winning' as const : b.status === 'lost' ? 'outbid' as const : b.status as any,
+    status: b.status === 'won' ? 'winning' as const : b.status === 'lost' ? 'outbid' as const : b.status as any,
     auctionEnd: b.auctionEndTime ? new Date(b.auctionEndTime).toLocaleString('en-IN') : '—',
   }));
 
   const totalBidsCount = bids.length;
-  const winningBidsCount = bids.filter((b: any) => b.isWinner || b.status === 'won').length;
-  const activeBidsCount = bids.filter((b: any) => b.status !== 'won' && b.status !== 'lost').length;
+  const winningBidsCount = uniqueHighestBids.filter((b: any) => (b.isWinner || b.status === 'won') && b.auctionStatus === 'completed').length;
+  const activeBidsCount = uniqueHighestBids.filter((b: any) => b.auctionStatus === 'live').length;
 
   const stats = [
     {
+      id: 'all',
       label: 'Total Bids Placed',
       value: totalBidsCount,
       icon: Wallet,
@@ -43,6 +56,7 @@ export default function BuyerBidsPage() {
       badge: 'All Bids',
     },
     {
+      id: 'won',
       label: 'Auctions Won',
       value: winningBidsCount,
       icon: Trophy,
@@ -53,6 +67,7 @@ export default function BuyerBidsPage() {
       badge: 'Wins',
     },
     {
+      id: 'active',
       label: 'Active Auctions',
       value: activeBidsCount,
       icon: Activity,
@@ -75,10 +90,10 @@ export default function BuyerBidsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-display font-extrabold tracking-tight text-white leading-tight">
-              {filter === 'won' ? 'Auctions Won' : 'Bidding Control Console'}
+              {filter === 'won' ? 'Auctions Won' : filter === 'active' ? 'Active Auctions' : 'Bidding Control Console'}
             </h1>
             <p className="text-muted/70 text-xs mt-1">
-              {filter === 'won' ? 'Verify and manage properties you have successfully won at auction.' : 'Track, monitor, and update your bids across active properties in real-time.'}
+              {filter === 'won' ? 'Verify and manage properties you have successfully won at auction.' : filter === 'active' ? 'Track and monitor your live bids.' : 'Track, monitor, and update your bids across active properties in real-time.'}
             </p>
           </div>
         </div>
@@ -90,7 +105,8 @@ export default function BuyerBidsPage() {
           {stats.map((s) => (
             <div
               key={s.label}
-              className={`relative overflow-hidden bg-gradient-to-br from-black/80 via-[#0A0A0A] to-black/95 backdrop-blur-xl border p-6 rounded-2xl transition-all duration-500 hover:-translate-y-1.5 group flex flex-col justify-between h-40 shadow-xl ${s.glow}`}
+              onClick={() => setSearchParams({ filter: s.id })}
+              className={`relative overflow-hidden cursor-pointer bg-gradient-to-br from-black/80 via-[#0A0A0A] to-black/95 backdrop-blur-xl border ${filter === s.id ? 'border-primary/40 shadow-2xl scale-[1.02]' : 'border-dark-border/40'} p-6 rounded-2xl transition-all duration-500 hover:-translate-y-1.5 group flex flex-col justify-between h-40 shadow-xl ${s.glow}`}
             >
               <div className="absolute -right-4 -top-4 opacity-[0.01] group-hover:opacity-[0.04] transition-opacity duration-500 pointer-events-none text-white">
                 <s.icon size={85} />

@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -17,9 +17,12 @@ import { getSellerInquiries } from '../../services/inquiryService';
 
 interface SellerSidebarProps {
   isOpen: boolean;
+  mobileMenuOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
-export function SellerSidebar({ isOpen }: SellerSidebarProps) {
+export function SellerSidebar({ isOpen, mobileMenuOpen, onMobileClose }: SellerSidebarProps) {
+  const isExpanded = isOpen || mobileMenuOpen;
   const { logout } = useAuthStore();
   const hasUnreadAlerts = useChatStore((state) => state.hasUnreadAlerts);
 
@@ -49,23 +52,21 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
   ];
 
   return (
-    <aside className={`h-full bg-black/85 backdrop-blur-xl border-r border-dark-border/40 flex flex-col pt-6 hidden lg:flex relative z-10 font-sans transition-all duration-300 ${isOpen ? 'w-64' : 'w-20'}`}>
+    <aside className={`h-full bg-black/85 backdrop-blur-xl border-r border-dark-border/40 flex flex-col pt-6 relative z-50 font-sans transition-all duration-300 ${isExpanded ? 'w-64' : 'w-20'} ${mobileMenuOpen ? 'fixed inset-y-0 left-0 flex' : 'hidden lg:flex'}`}>
       {/* Brand Header */}
       <div className="px-6 mb-8 flex items-center justify-center">
-        {isOpen ? (
-          <h2 className="text-2xl font-display font-extrabold tracking-wider uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 animate-fade-in flex items-center gap-1.5">
-            Ghar<span className="text-white font-black">Bid</span>
-          </h2>
-        ) : (
-          <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 animate-fade-in">
-            GB
-          </h2>
-        )}
+        <Link to="/">
+          {isExpanded ? (
+            <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent animate-fade-in">GharBid</h2>
+          ) : (
+            <h2 className="text-xl font-display font-black tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent animate-fade-in">GB</h2>
+          )}
+        </Link>
       </div>
 
       {/* Nav Menu */}
-      <nav className={`flex-1 overflow-y-auto overflow-x-hidden space-y-1.5 custom-scrollbar ${isOpen ? 'px-4' : 'px-2'}`}>
-        {isOpen && (
+      <nav className={`flex-1 overflow-y-auto overflow-x-hidden space-y-1.5 custom-scrollbar ${isExpanded ? 'px-4' : 'px-2'}`}>
+        {isExpanded && (
           <p className="px-4 text-[10px] font-bold text-muted/50 uppercase tracking-widest mb-3 mt-2 whitespace-nowrap flex items-center gap-1.5">
             <Sparkles size={10} className="text-primary/70" /> Menu
           </p>
@@ -76,9 +77,10 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
             key={item.label}
             to={item.path}
             end={item.path === '/seller'}
-            title={!isOpen ? item.label : undefined}
+            onClick={onMobileClose}
+            title={!isExpanded ? item.label : undefined}
             className={({ isActive }) =>
-              `flex items-center ${isOpen ? 'px-4 gap-4' : 'justify-center'} py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+              `flex items-center ${isExpanded ? 'px-4 gap-4' : 'justify-center'} py-3 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                 isActive
                   ? 'text-primary bg-gradient-to-r from-primary/15 to-transparent font-semibold'
                   : 'text-muted hover:text-white hover:bg-white/5'
@@ -88,7 +90,7 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
             {({ isActive }) => (
               <>
                 <item.icon size={19} className={`z-10 shrink-0 transition-colors duration-300 ${isActive ? 'text-primary' : 'group-hover:text-primary'}`} />
-                <span className={`z-10 whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
+                <span className={`z-10 whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
                   {item.label}
                   {item.label === 'Inquiries' && totalAlerts > 0 && (
                     <span className="px-2 py-0.5 rounded-md bg-red-600 border border-red-500/20 text-white text-[10px] font-bold flex items-center justify-center shrink-0 shadow-md">
@@ -100,12 +102,12 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
                   )}
                 </span>
                 
-                {item.label === 'Inquiries' && !isOpen && totalAlerts > 0 && (
+                {item.label === 'Inquiries' && !isExpanded && totalAlerts > 0 && (
                   <span className="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-red-600 text-white text-[9px] font-bold flex items-center justify-center border border-dark-card shadow-lg">
                     {totalAlerts}
                   </span>
                 )}
-                {item.label === 'Inquiries' && !isOpen && showDot && (
+                {item.label === 'Inquiries' && !isExpanded && showDot && (
                   <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 )}
                 
@@ -119,14 +121,15 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
       </nav>
 
       {/* Footer Nav */}
-      <div className={`p-4 border-t border-dark-border/40 mt-auto ${!isOpen ? 'px-2' : ''} space-y-1.5`}>
+      <div className={`p-4 border-t border-dark-border/40 mt-auto ${!isExpanded ? 'px-2' : ''} space-y-1.5`}>
         {bottomItems.map((item) => (
           <NavLink
             key={item.label}
             to={item.path}
-            title={!isOpen ? item.label : undefined}
+            onClick={onMobileClose}
+            title={!isExpanded ? item.label : undefined}
             className={({ isActive }) =>
-              `flex items-center ${isOpen ? 'gap-4 px-4' : 'justify-center'} py-3 rounded-xl transition-all duration-300 group relative ${
+              `flex items-center ${isExpanded ? 'gap-4 px-4' : 'justify-center'} py-3 rounded-xl transition-all duration-300 group relative ${
                 isActive
                   ? 'text-primary bg-gradient-to-r from-primary/15 to-transparent font-semibold'
                   : 'text-muted hover:text-white hover:bg-white/5'
@@ -136,7 +139,7 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
             {({ isActive }) => (
               <>
                 <item.icon size={19} className={`shrink-0 transition-colors duration-300 ${isActive ? 'text-primary' : 'group-hover:text-primary'}`} />
-                <span className={`whitespace-nowrap transition-all duration-300 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
+                <span className={`whitespace-nowrap transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
                   {item.label}
                 </span>
                 {isActive && (
@@ -148,12 +151,15 @@ export function SellerSidebar({ isOpen }: SellerSidebarProps) {
         ))}
         
         <button
-          onClick={() => logout()}
-          title={!isOpen ? 'Logout' : undefined}
-          className={`w-full flex items-center ${isOpen ? 'gap-4 px-4' : 'justify-center'} py-3 rounded-xl text-muted hover:text-destructive hover:bg-destructive/10 transition-all duration-300 group mt-1`}
+          onClick={() => {
+            logout();
+            if (onMobileClose) onMobileClose();
+          }}
+          title={!isExpanded ? 'Logout' : undefined}
+          className={`w-full flex items-center ${isExpanded ? 'gap-4 px-4' : 'justify-center'} py-3 rounded-xl text-muted hover:text-destructive hover:bg-destructive/10 transition-all duration-300 group mt-1`}
         >
           <LogOut size={19} className="shrink-0 group-hover:text-destructive transition-colors duration-300" />
-          <span className={`whitespace-nowrap transition-all duration-300 ${isOpen ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
+          <span className={`whitespace-nowrap transition-all duration-300 ${isExpanded ? 'w-auto opacity-100' : 'w-0 opacity-0 overflow-hidden hidden'}`}>
             Logout
           </span>
         </button>

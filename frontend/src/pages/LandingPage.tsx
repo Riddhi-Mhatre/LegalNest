@@ -5,6 +5,7 @@ import { getProperties } from '../services/propertyService';
 import { PropertyCard } from '../components/properties/PropertyCard';
 import { Loader } from '../components/common/Loader';
 import { ROUTES } from '../utils/constants';
+import { useAuthStore } from '../store/authStore';
 
 const STATS = [
   { label: 'Verified Properties', value: '500+' },
@@ -21,6 +22,7 @@ const STEPS = [
 ];
 
 export default function LandingPage() {
+  const { isAuthenticated, user } = useAuthStore();
   const { data: properties, isLoading } = useQuery({
     queryKey: ['properties', 'featured'],
     queryFn: () => getProperties({ status: 'approved' }),
@@ -51,9 +53,18 @@ export default function LandingPage() {
           <p className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             GharBid is India's most trusted real estate marketplace — verified listings, live English auctions, and secure communications. All offline transactions, zero hidden fees.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to={ROUTES.PROPERTIES} className="btn-primary flex items-center gap-2" id="hero-browse-btn">
-              Browse Properties <ArrowRight size={16} />
+          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
+            {isAuthenticated ? (
+              <Link to={`/${user?.role}/dashboard`} className="btn-primary flex items-center gap-2" id="hero-dashboard-btn">
+                Go to Dashboard <ArrowRight size={16} />
+              </Link>
+            ) : (
+              <Link to={ROUTES.REGISTER} className="btn-primary flex items-center gap-2" id="hero-register-btn">
+                Get Started Free <ArrowRight size={16} />
+              </Link>
+            )}
+            <Link to={ROUTES.PROPERTIES} className="btn-secondary flex items-center gap-2" id="hero-browse-btn">
+              Browse Properties
             </Link>
             <Link to="/auctions" className="btn-secondary flex items-center gap-2 shadow-[0_0_15px_rgba(0,128,128,0.5)] hover:shadow-[0_0_30px_rgba(0,128,128,0.8)] hover:-translate-y-1 transition-all duration-300" id="hero-auction-btn">
               <Gavel size={16} className="animate-pulse" /> Join Live Auction
@@ -137,15 +148,17 @@ export default function LandingPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-16 px-4 text-center mt-auto">
-          <div className="max-w-2xl mx-auto">
-            <h2 className="section-title mb-4">Ready to Find Your Dream Property?</h2>
-            <p className="text-muted mb-8">Join 1,200+ buyers and sellers who trust GharBid for transparent real estate transactions.</p>
-            <Link to={ROUTES.REGISTER} className="btn-primary text-base px-8 py-3 inline-flex items-center gap-2 hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,215,0,0.4)] transition-all duration-300" id="landing-cta-register">
-              Get Started Free <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-            </Link>
-          </div>
-        </section>
+        {!isAuthenticated && (
+          <section className="py-16 px-4 text-center mt-auto">
+            <div className="max-w-2xl mx-auto">
+              <h2 className="section-title mb-4">Ready to Find Your Dream Property?</h2>
+              <p className="text-muted mb-8">Join 1,200+ buyers and sellers who trust GharBid for transparent real estate transactions.</p>
+              <Link to={ROUTES.REGISTER} className="btn-primary text-base px-8 py-3 inline-flex items-center gap-2 hover:-translate-y-1 hover:scale-105 hover:shadow-[0_0_25px_rgba(255,215,0,0.4)] transition-all duration-300" id="landing-cta-register">
+                Get Started Free <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+              </Link>
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

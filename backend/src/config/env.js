@@ -40,8 +40,7 @@ const envSchema = z.object({
   // Location
   LOCATION_INDEX_NAME: z.string().default('LegalNestPlaceIndex'),
 
-  // SES & SNS
-  SES_FROM_EMAIL: z.string().email().default('noreply@legalnest.com'),
+  // SNS
   SNS_TOPIC_ARN: z.string().optional(),
 
   // Frontend

@@ -79,22 +79,31 @@ export default function BuyerDashboard() {
   const recommendedProperties = (properties as any[]).slice(0, 2);
   const featuredProperties = (properties as any[]).slice(0, 3);
 
-  // Unique auctions bid on
-  const participatedAuctionIds = new Set((buyerBids as any[]).map(b => b.auctionId));
-  const auctionsParticipatedCount = participatedAuctionIds.size;
+  // Deduplicate bids to only keep the highest bid per auction/property
+  const highestBidsMap = new Map();
+  for (const b of (buyerBids as any[])) {
+    const existing = highestBidsMap.get(b.auctionId || b.propertyId);
+    if (!existing || b.myBid > existing.myBid) {
+      highestBidsMap.set(b.auctionId || b.propertyId, b);
+    }
+  }
+  const uniqueHighestBids = Array.from(highestBidsMap.values());
 
-  // Won auctions count
-  const auctionsWonCount = (buyerBids as any[]).filter(b => b.isWinner || b.status === 'won').length;
+  // Total bids placed (all bids, un-deduplicated)
+  const totalBidsCount = (buyerBids as any[]).length;
+
+  // Won auctions count (when deal is closed)
+  const auctionsWonCount = uniqueHighestBids.filter((b: any) => (b.isWinner || b.status === 'won') && b.auctionStatus === 'completed').length;
 
   // Property stats
   const purchasedCount = purchases.length;
   const savedCount = savedProperties.length;
 
   // Map backend bids list to matches for BidTable component format
-  const mappedBids = (buyerBids as any[]).map(b => ({
+  const mappedBids = uniqueHighestBids.map((b: any) => ({
     id: b.bidId,
     propertyTitle: b.propertyName ?? 'Unknown Property',
-    image: b.image || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=80&q=80',
+    image: b.image || b.propertyImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=80&q=80',
     currentBid: b.currentHighestBid,
     myBid: b.myBid,
     status: b.status === 'won' ? 'winning' as const : b.status === 'lost' ? 'outbid' as const : b.status as any,
@@ -142,12 +151,12 @@ export default function BuyerDashboard() {
       badgeClass: 'bg-primary/10 text-primary border border-primary/20',
     },
     {
-      label: 'Active Bids Placed',
-      value: auctionsParticipatedCount,
+      label: 'Total Bids Placed',
+      value: totalBidsCount,
       icon: Gavel,
       path: ROUTES.BUYER_BIDS,
       color: 'text-rose-400',
-      trend: 'Active Rooms',
+      trend: 'All Bids',
       progressClass: 'bg-rose-400 w-[55%]',
       glow: 'hover:shadow-[0_25px_50px_rgba(244,63,94,0.06)] hover:border-rose-500/40',
       iconGlow: 'shadow-[0_0_15px_rgba(244,63,94,0.15)] bg-rose-500/10 border-rose-500/20',
@@ -252,14 +261,14 @@ export default function BuyerDashboard() {
               </div>
             </div>
 
-            {/* Active Bids Card */}
+            {/* Total Bids Card */}
             <div className="p-4 rounded-2xl border border-white/10 hover:border-rose-500/25 bg-black/75 backdrop-blur-md shadow-md hover:-translate-y-1 transition-all duration-300 flex items-center gap-3.5">
               <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 shadow-inner">
                 <Gavel size={16} />
               </div>
               <div>
-                <p className="text-[9px] text-muted uppercase tracking-wider font-semibold">Active Bids</p>
-                <p className="text-sm font-extrabold text-white">{auctionsParticipatedCount} Placed</p>
+                <p className="text-[9px] text-muted uppercase tracking-wider font-semibold">Total Bids</p>
+                <p className="text-sm font-extrabold text-white">{totalBidsCount} Placed</p>
               </div>
             </div>
 
@@ -437,8 +446,12 @@ export default function BuyerDashboard() {
                       <CheckCircle size={10} /> Acquired Asset
                     </div>
                   </div>
-                  <div className="w-11 h-11 rounded-full bg-emerald-500/5 flex items-center justify-center border border-emerald-500/15 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform duration-300 shadow-inner">
-                    <Building2 size={20} />
+                  <div className="w-11 h-11 rounded-full bg-emerald-500/5 flex items-center justify-center border border-emerald-500/15 text-emerald-400 shrink-0 group-hover:scale-105 transition-transform duration-300 shadow-inner overflow-hidden">
+                    {purchase.property?.images?.[0] ? (
+                      <img src={purchase.property.images[0]} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <Building2 size={20} />
+                    )}
                   </div>
                 </div>
                 

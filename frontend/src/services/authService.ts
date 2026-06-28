@@ -6,11 +6,11 @@ export const login = (email: string, password: string) =>
 export const register = (data: { email: string; password: string; name: string; phone?: string; role: string }) =>
   api.post('/auth/register', data).then(r => r.data.data);
 
-export const requestOtp = (phone: string) =>
-  api.post('/auth/otp/request', { phone }).then(r => r.data.data);
+export const forgotPassword = (email: string) =>
+  api.post('/auth/forgot-password', { email }).then(r => r.data.data);
 
-export const verifyOtp = (phone: string, code: string) =>
-  api.post('/auth/otp/verify', { phone, code }).then(r => r.data.data);
+export const resetPassword = (email: string, code: string, newPassword: string) =>
+  api.post('/auth/reset-password', { email, code, newPassword }).then(r => r.data.data);
 
 export const verifyEmail = (email: string, code: string) =>
   api.post('/auth/verify-email', { email, code }).then(r => r.data.data);

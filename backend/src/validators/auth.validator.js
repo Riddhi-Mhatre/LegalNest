@@ -13,7 +13,12 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export const otpSchema = z.object({
-  phone: z.string().regex(/^\+91[0-9]{10}$/),
+export const forgotPasswordSchema = z.object({
+  email: z.string().email(),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email(),
   code: z.string().length(6),
+  newPassword: z.string().min(8).max(64),
 });

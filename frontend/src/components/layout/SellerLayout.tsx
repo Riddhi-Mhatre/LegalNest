@@ -71,7 +71,11 @@ export function SellerLayout() {
 
   return (
     <div className="min-h-screen bg-black flex overflow-hidden">
-      <SellerSidebar isOpen={isDesktopSidebarOpen} />
+      <SellerSidebar 
+        isOpen={isDesktopSidebarOpen} 
+        mobileMenuOpen={mobileMenuOpen} 
+        onMobileClose={() => setMobileMenuOpen(false)} 
+      />
       
       {/* Mobile overlay */}
       {mobileMenuOpen && (

@@ -116,10 +116,6 @@ export default function MyPropertiesPage() {
 
   const tabItems = [
     { value: 'all', label: 'All Listings' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'pending', label: 'Pending' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'draft', label: 'Draft' },
     { value: 'sold', label: 'Sold' },
   ];
 

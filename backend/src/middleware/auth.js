@@ -37,6 +37,7 @@ export const authenticate = async (req, res, next) => {
       error: {
         code: 'AUTH_001',
         message: 'Invalid or expired token',
+        details: err.message,
       },
     });
   }

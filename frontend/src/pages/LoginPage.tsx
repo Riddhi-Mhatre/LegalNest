@@ -1,19 +1,26 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { loginSchema, type LoginFormData } from '../utils/validators';
+import { 
+  loginSchema, type LoginFormData, 
+  forgotPasswordSchema, type ForgotPasswordFormData, 
+  resetPasswordSchema, type ResetPasswordFormData 
+} from '../utils/validators';
 import { useAuth } from '../hooks/useAuth';
+import { forgotPassword, resetPassword } from '../services/authService';
 import { Loader } from '../components/common/Loader';
-import { Eye, EyeOff, Mail, Phone, User, Building2, X, KeyRound, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, User, Building2, X, KeyRound, Sparkles, ArrowLeft } from 'lucide-react';
 import { ROUTES } from '../utils/constants';
 
 export default function LoginPage() {
-  const [method, setMethod] = useState<'email' | 'phone'>('email');
+  const navigate = useNavigate();
+  const [view, setView] = useState<'login' | 'forgot-password' | 'reset-password'>('login');
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, completeChallenge } = useAuth();
+  const [resetEmail, setResetEmail] = useState('');
 
   // Challenge state – set when Cognito returns NEW_PASSWORD_REQUIRED
   const [challenge, setChallenge] = useState<{
@@ -28,12 +35,28 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const { 
+    register: registerForgot, 
+    handleSubmit: handleSubmitForgot, 
+    formState: { errors: errorsForgot } 
+  } = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+  });
+
+  const { 
+    register: registerReset, 
+    handleSubmit: handleSubmitReset, 
+    formState: { errors: errorsReset } 
+  } = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+  });
+
   const roleColorClasses = {
     buyer: 'border-white/10 hover:border-primary/30 hover:shadow-[0_0_50px_rgba(255,215,0,0.08)]',
     seller: 'border-white/10 hover:border-secondary/30 hover:shadow-[0_0_50px_rgba(0,128,128,0.1)]',
   };
 
-  const inputCls = (r: 'buyer' | 'seller') => 
+  const inputCls = (r: 'buyer' | 'seller' = 'buyer') => 
     `w-full bg-black/60 border border-dark-border/80 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-1 transition-all duration-300 font-sans text-base ${
       r === 'buyer' 
         ? 'focus:border-primary/60 focus:ring-primary/20 focus:shadow-[0_0_15px_rgba(255,215,0,0.05)]' 
@@ -56,6 +79,39 @@ export default function LoginPage() {
           error.response?.data?.message ||
           error.message ||
           'Login failed';
+        toast.error(msg);
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onForgotSubmit = async (data: ForgotPasswordFormData) => {
+    setLoading(true);
+    try {
+      await forgotPassword(data.email);
+      setResetEmail(data.email);
+      setView('reset-password');
+      import('sonner').then(({ toast }) => toast.success('Password reset code sent to your email.'));
+    } catch (error: any) {
+      import('sonner').then(({ toast }) => {
+        const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to send reset code';
+        toast.error(msg);
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onResetSubmit = async (data: ResetPasswordFormData) => {
+    setLoading(true);
+    try {
+      await resetPassword(data.email, data.code, data.newPassword);
+      setView('login');
+      import('sonner').then(({ toast }) => toast.success('Password reset successful. You can now log in.'));
+    } catch (error: any) {
+      import('sonner').then(({ toast }) => {
+        const msg = error.response?.data?.error?.message || error.response?.data?.message || error.message || 'Failed to reset password';
         toast.error(msg);
       });
     } finally {
@@ -118,7 +174,6 @@ export default function LoginPage() {
       </div>
 
       <div className="w-full max-w-md relative z-10 animate-fade-in">
-        {/* Set Permanent Password */}
         {challenge ? (
           <div className="space-y-6">
             <div className="text-center space-y-2">
@@ -182,8 +237,107 @@ export default function LoginPage() {
               </form>
             </div>
           </div>
+        ) : view === 'forgot-password' ? (
+          <div className="space-y-6">
+             <div className="text-center space-y-2">
+              <h1 className="text-3xl font-display font-black text-white tracking-tight leading-none">Reset Password</h1>
+              <p className="text-muted/80 text-sm font-bold tracking-wide">Enter your email to receive a reset code.</p>
+            </div>
+            <div className="bg-[#0A0A0A]/85 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
+              <form onSubmit={handleSubmitForgot(onForgotSubmit)} className="space-y-5">
+                <div>
+                  <label htmlFor="forgot-email" className={labelCls}>Email</label>
+                  <input 
+                    id="forgot-email" 
+                    type="email" 
+                    {...registerForgot('email')} 
+                    className={inputCls()} 
+                    placeholder="you@example.com" 
+                  />
+                  {errorsForgot.email && <p className="text-red-400 text-xs mt-1">{errorsForgot.email.message}</p>}
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="w-full py-3.5 rounded-xl font-black uppercase tracking-widest text-xs bg-white text-black hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+                >
+                  {loading ? <Loader size="sm" label="" /> : 'Send Reset Code'}
+                </button>
+                <div className="text-center mt-4">
+                  <button type="button" onClick={() => setView('login')} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white transition-colors">
+                    <ArrowLeft size={14} /> Back to Login
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : view === 'reset-password' ? (
+           <div className="space-y-6">
+             <div className="text-center space-y-2">
+              <h1 className="text-3xl font-display font-black text-white tracking-tight leading-none">New Password</h1>
+              <p className="text-muted/80 text-sm font-bold tracking-wide">Enter the code sent to {resetEmail}.</p>
+            </div>
+            <div className="bg-[#0A0A0A]/85 backdrop-blur-xl border border-white/10 p-8 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
+              <form onSubmit={handleSubmitReset(onResetSubmit)} className="space-y-5">
+                 <div>
+                  <label htmlFor="reset-email" className={labelCls}>Email</label>
+                  <input 
+                    id="reset-email" 
+                    type="email" 
+                    {...registerReset('email')} 
+                    defaultValue={resetEmail}
+                    className={inputCls()} 
+                    placeholder="you@example.com" 
+                  />
+                  {errorsReset.email && <p className="text-red-400 text-xs mt-1">{errorsReset.email.message}</p>}
+                </div>
+                <div>
+                  <label htmlFor="reset-code" className={labelCls}>Verification Code</label>
+                  <input 
+                    id="reset-code" 
+                    type="text" 
+                    {...registerReset('code')} 
+                    className={inputCls()} 
+                    placeholder="123456" 
+                  />
+                  {errorsReset.code && <p className="text-red-400 text-xs mt-1">{errorsReset.code.message}</p>}
+                </div>
+                <div>
+                  <label htmlFor="reset-new-password" className={labelCls}>New Password</label>
+                  <div className="relative">
+                    <input 
+                      id="reset-new-password" 
+                      type={showPassword ? 'text' : 'password'} 
+                      {...registerReset('newPassword')} 
+                      className={inputCls()} 
+                      placeholder="New password" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white" 
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errorsReset.newPassword && <p className="text-red-400 text-xs mt-1">{errorsReset.newPassword.message}</p>}
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={loading} 
+                  className="w-full py-3.5 rounded-xl font-black uppercase tracking-widest text-xs bg-white text-black hover:bg-gray-200 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 shadow-md"
+                >
+                  {loading ? <Loader size="sm" label="" /> : 'Reset Password'}
+                </button>
+                 <div className="text-center mt-4">
+                  <button type="button" onClick={() => setView('login')} className="inline-flex items-center gap-1.5 text-xs text-muted hover:text-white transition-colors">
+                    <ArrowLeft size={14} /> Back to Login
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         ) : (
-          /* Normal Login Form */
           <div className="space-y-6">
             <div className="text-center space-y-2">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5">
@@ -195,7 +349,6 @@ export default function LoginPage() {
 
             <div className={`bg-[#0A0A0A]/85 backdrop-blur-xl border p-8 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.95)] transition-all duration-500 space-y-6 ${roleColorClasses[role]}`}>
               
-              {/* Role Selection */}
               <div className="flex gap-4">
                 <button
                   type="button"
@@ -223,86 +376,55 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Method Tabs */}
-              <div className="flex bg-black/60 border border-dark-border/80 rounded-xl p-1 gap-1">
-                <button
-                  id="login-tab-email"
-                  type="button"
-                  onClick={() => setMethod('email')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                    method === 'email' 
-                      ? 'bg-primary text-black shadow-md font-black' 
-                      : 'text-muted hover:text-white'
-                  }`}
-                >
-                  <Mail size={12} /> Email
-                </button>
-                <button
-                  id="login-tab-phone"
-                  type="button"
-                  onClick={() => setMethod('phone')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                    method === 'phone' 
-                      ? 'bg-primary text-black shadow-md font-black' 
-                      : 'text-muted hover:text-white'
-                  }`}
-                >
-                  <Phone size={12} /> Phone OTP
-                </button>
-              </div>
-
-              {method === 'email' ? (
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                  <div>
-                    <label htmlFor="login-email" className={labelCls}>Email</label>
-                    <input 
-                      id="login-email" 
-                      type="email" 
-                      {...register('email')} 
-                      className={inputCls(role)} 
-                      placeholder="you@example.com" 
-                    />
-                    {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
-                  </div>
-                  <div>
-                    <label htmlFor="login-password" className={labelCls}>Password</label>
-                    <div className="relative">
-                      <input 
-                        id="login-password" 
-                        type={showPassword ? 'text' : 'password'} 
-                        {...register('password')} 
-                        className={inputCls(role)} 
-                        placeholder="Your password" 
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowPassword(!showPassword)} 
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white" 
-                        aria-label="Toggle password"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
-                  </div>
-                  <button 
-                    id="login-submit" 
-                    type="submit" 
-                    disabled={loading} 
-                    className={`w-full py-3.5 rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] shadow-md ${
-                      role === 'buyer'
-                        ? 'bg-gradient-to-r from-primary to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black shadow-[0_0_20px_rgba(255,215,0,0.15)] hover:shadow-[0_0_30px_rgba(255,215,0,0.35)]'
-                        : 'bg-gradient-to-r from-secondary to-teal-700 hover:from-teal-400 hover:to-teal-500 text-white shadow-[0_0_20px_rgba(0,128,128,0.15)] hover:shadow-[0_0_30px_rgba(0,128,128,0.35)]'
-                    }`}
-                  >
-                    {loading ? <Loader size="sm" label="" /> : 'Sign In'}
-                  </button>
-                </form>
-              ) : (
-                <div className="space-y-4 py-4 text-center">
-                  <p className="text-muted text-xs font-semibold uppercase tracking-wider">Phone OTP login coming in Sprint 1</p>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                <div>
+                  <label htmlFor="login-email" className={labelCls}>Email</label>
+                  <input 
+                    id="login-email" 
+                    type="email" 
+                    {...register('email')} 
+                    className={inputCls(role)} 
+                    placeholder="you@example.com" 
+                  />
+                  {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email.message}</p>}
                 </div>
-              )}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label htmlFor="login-password" className="block text-xs font-black text-muted/70 uppercase tracking-wider font-sans">Password</label>
+                    <button type="button" onClick={() => setView('forgot-password')} className="text-xs text-primary hover:text-yellow-400 transition-colors">Forgot password?</button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      id="login-password" 
+                      type={showPassword ? 'text' : 'password'} 
+                      {...register('password')} 
+                      className={inputCls(role)} 
+                      placeholder="Your password" 
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => setShowPassword(!showPassword)} 
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white" 
+                      aria-label="Toggle password"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password.message}</p>}
+                </div>
+                <button 
+                  id="login-submit" 
+                  type="submit" 
+                  disabled={loading} 
+                  className={`w-full py-3.5 rounded-xl font-black uppercase tracking-widest text-xs transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.98] shadow-md mt-2 ${
+                    role === 'buyer'
+                      ? 'bg-gradient-to-r from-primary to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black shadow-[0_0_20px_rgba(255,215,0,0.15)] hover:shadow-[0_0_30px_rgba(255,215,0,0.35)]'
+                      : 'bg-gradient-to-r from-secondary to-teal-700 hover:from-teal-400 hover:to-teal-500 text-white shadow-[0_0_20px_rgba(0,128,128,0.15)] hover:shadow-[0_0_30px_rgba(0,128,128,0.35)]'
+                  }`}
+                >
+                  {loading ? <Loader size="sm" label="" /> : 'Sign In'}
+                </button>
+              </form>
 
               <p className="text-center text-sm text-muted/80 font-bold">
                 Don't have an account?{' '}

@@ -71,7 +71,11 @@ export function BuyerLayout() {
 
   return (
     <div className="min-h-screen bg-black flex overflow-hidden">
-      <BuyerSidebar isOpen={isDesktopSidebarOpen} />
+      <BuyerSidebar 
+        isOpen={isDesktopSidebarOpen} 
+        mobileMenuOpen={mobileMenuOpen} 
+        onMobileClose={() => setMobileMenuOpen(false)} 
+      />
       
       {/* Mobile overlay */}
       {mobileMenuOpen && (
