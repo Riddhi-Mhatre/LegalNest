@@ -8,7 +8,8 @@ import type { Auction, CreateAuctionPayload } from '../../../types/auction.types
 import {
   Gavel, CheckCircle, Activity, TrendingUp,
   ArrowRight, X, Building2, MapPin, Plus, Loader2,
-  CalendarClock, ShieldAlert, LayoutGrid
+  CalendarClock, ShieldAlert, LayoutGrid, Sparkles,
+  ArrowUpRight
 } from 'lucide-react';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -20,12 +21,12 @@ const getPrice = (p: any) => {
 };
 
 const STATUS_CFG: Record<string, { label: string; cls: string }> = {
-  scheduled: { label: 'Scheduled', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  live:       { label: 'Live',      cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  active:     { label: 'Live',      cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  completed:  { label: 'Closed',   cls: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
-  ended:      { label: 'Closed',   cls: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
-  cancelled:  { label: 'Cancelled', cls: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  scheduled: { label: 'Scheduled', cls: 'bg-blue-500/10 text-blue-400 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.05)] animate-pulse' },
+  live:       { label: 'Live Now',  cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)] animate-pulse' },
+  active:     { label: 'Live Now',  cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.05)] animate-pulse' },
+  completed:  { label: 'Closed',    cls: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+  ended:      { label: 'Closed',    cls: 'bg-gray-500/10 text-gray-400 border-gray-500/30' },
+  cancelled:  { label: 'Cancelled', cls: 'bg-red-500/10 text-red-400 border-red-500/30' },
 };
 
 // ─── Tab type ─────────────────────────────────────────────────────────────────
@@ -52,8 +53,6 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const { mutate, isPending } = useMutation({
-    mutationFn: (payload: CreateAuctionPayload) =>
-      scheduleSellerAuction(property.propertyId, payload),
     onSuccess: () => {
       toast.success('Auction created successfully!');
       queryClient.invalidateQueries({ queryKey: ['seller', 'auctions'] });
@@ -63,6 +62,8 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
     onError: (err: any) => {
       toast.error(err?.response?.data?.error?.message ?? 'Failed to create auction');
     },
+    mutationFn: (payload: CreateAuctionPayload) =>
+      scheduleSellerAuction(property.propertyId, payload),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -98,24 +99,28 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
     });
   };
 
-  const inputCls = 'w-full bg-black border border-dark-border rounded-lg px-4 py-3 text-white placeholder-muted focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary transition-all';
-  const labelCls = 'block text-xs text-muted font-bold uppercase tracking-wider mb-2';
+  const inputCls = 'w-full bg-black/60 border border-dark-border/80 rounded-xl px-4 py-3 text-white placeholder-muted focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/20 focus:shadow-[0_0_15px_rgba(255,215,0,0.05)] transition-all duration-200 font-sans';
+  const labelCls = 'block text-[10px] font-bold text-muted/70 uppercase tracking-widest mb-2 font-sans';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-lg bg-dark-card border border-dark-border rounded-2xl p-8 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+      <div className="absolute inset-0" onClick={onClose} />
+      
+      <div className="relative z-10 w-full max-w-lg bg-[#0A0A0A]/95 border border-primary/20 rounded-3xl p-6 md:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.95)] animate-slide-up overflow-hidden">
         {/* Header */}
-        <div className="flex items-start justify-between mb-8">
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Gavel size={18} className="text-primary" />
-              <span className="text-xs text-primary font-bold uppercase tracking-widest">Create Auction</span>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Gavel size={15} className="text-primary" />
+              <span className="text-[10px] text-primary font-bold uppercase tracking-widest font-sans">Create Auction</span>
             </div>
-            <h2 className="text-2xl font-display font-bold text-white line-clamp-1">{property.title}</h2>
-            <p className="text-sm text-muted mt-1">{getCity(property)}, {getState(property)}</p>
+            <h2 className="text-2xl font-display font-extrabold text-white line-clamp-1 leading-tight">{property.title}</h2>
+            <p className="text-xs text-muted mt-1.5 flex items-center gap-1"><MapPin size={12} className="text-primary/70" /> {getCity(property)}, {getState(property)}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-lg transition-colors text-muted hover:text-white">
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors text-muted hover:text-white"
+          >
             <X size={18} />
           </button>
         </div>
@@ -135,28 +140,28 @@ function CreateAuctionModal({ property, onClose, onSuccess }: CreateAuctionModal
           <div>
             <label className={labelCls}>Bid Increment (₹)</label>
             <input className={inputCls} type="number" min="1" placeholder="e.g. 50000" value={form.bidIncrement} onChange={e => setF('bidIncrement', e.target.value)} />
-            <p className="text-xs text-muted mt-1">Minimum amount each new bid must exceed the previous bid by.</p>
+            <p className="text-[10px] text-muted/70 mt-1.5 leading-relaxed">Minimum amount each new bid must exceed the previous bid by.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Start Date & Time</label>
-              <input className={inputCls} type="datetime-local" value={form.startTime} onChange={e => setF('startTime', e.target.value)} />
+              <input className={`${inputCls} cursor-pointer`} type="datetime-local" value={form.startTime} onChange={e => setF('startTime', e.target.value)} />
             </div>
             <div>
               <label className={labelCls}>End Date & Time</label>
-              <input className={inputCls} type="datetime-local" value={form.endTime} onChange={e => setF('endTime', e.target.value)} />
+              <input className={`${inputCls} cursor-pointer`} type="datetime-local" value={form.endTime} onChange={e => setF('endTime', e.target.value)} />
             </div>
           </div>
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-dark-border text-muted hover:text-white hover:border-white/30 font-bold transition-all text-sm">
+            <button type="button" onClick={onClose} className="flex-1 py-3 rounded-xl border border-dark-border text-muted hover:text-white hover:bg-white/5 font-extrabold transition-all text-[10px] uppercase tracking-widest">
               Cancel
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-primary text-black font-bold hover:bg-yellow-400 transition-all hover:-translate-y-0.5 disabled:opacity-40 disabled:cursor-not-allowed text-sm"
+              className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl bg-gradient-to-r from-primary to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-extrabold text-[10px] uppercase tracking-widest shadow-[0_0_20px_rgba(255,215,0,0.15)] hover:shadow-[0_0_30px_rgba(255,215,0,0.35)] transition-all duration-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
             >
               {isPending ? <><Loader2 size={16} className="animate-spin" />Creating...</> : <><Gavel size={16} />Create Auction</>}
             </button>
@@ -176,39 +181,43 @@ function AuctionListCard({ auction, onManage }: AuctionListCardProps) {
   const bidsCount = auction.bids?.length ?? 0;
 
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between p-5 bg-black/40 border border-dark-border rounded-xl hover:border-primary/40 transition-all group">
+    <div className={`flex flex-col lg:flex-row lg:items-center justify-between p-6 bg-[#0A0A0A]/60 border border-dark-border/85 rounded-2xl hover:border-primary/30 transition-all duration-500 group gap-5 hover:shadow-[0_20px_45px_rgba(255,215,0,0.015)] ${
+      isLive ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.01)]' : ''
+    }`}>
       <div className="flex items-center gap-4 min-w-0">
-        <div className="w-14 h-14 rounded-lg bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
-          <Gavel size={22} className="text-muted" />
+        <div className={`w-12 h-12 rounded-full border flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-all duration-300 ${
+          isLive ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400' : 'bg-white/5 border-white/5 text-muted group-hover:text-primary'
+        }`}>
+          <Gavel size={20} className="transition-colors" />
         </div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted font-mono mb-1">{auction.propertyId.slice(0, 10)}…</p>
+        <div className="min-w-0 space-y-1">
+          <p className="text-[10px] text-muted font-mono tracking-wider">{auction.propertyId.slice(0, 10)}…</p>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${cfg.cls}`}>
-              {isLive && <span className="inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full mr-1 animate-pulse" />}
+            <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2.5 py-1 rounded-md border uppercase tracking-wider backdrop-blur-sm shadow-md ${cfg.cls}`}>
+              {isLive && <span className="inline-block w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />}
               {cfg.label}
             </span>
-            <span className="text-xs text-muted">{bidsCount} bid{bidsCount !== 1 ? 's' : ''}</span>
+            <span className="text-[10px] font-bold text-muted/70 bg-white/5 px-2 py-0.5 rounded border border-white/5 tracking-wider uppercase">{bidsCount} bid{bidsCount !== 1 ? 's' : ''}</span>
           </div>
         </div>
       </div>
 
-      <div className="mt-4 md:mt-0 flex flex-wrap items-center gap-6 text-sm">
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mb-1">Current Bid</p>
-          <p className="font-bold text-primary">{formatPrice(auction.currentHighestBid || auction.startingPrice || 0)}</p>
+      <div className="flex flex-wrap items-center gap-6 text-sm justify-between lg:justify-end">
+        <div className="min-w-[100px]">
+          <p className="text-[9px] text-muted uppercase tracking-wider font-bold mb-1">Current Bid</p>
+          <p className="font-extrabold text-primary font-display text-base leading-none">{formatPrice(auction.currentHighestBid || auction.startingPrice || 0)}</p>
         </div>
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mb-1">Start</p>
-          <p className="text-white text-xs">{auction.startTime ? new Date(auction.startTime).toLocaleDateString('en-IN') : '—'}</p>
+        <div className="min-w-[85px]">
+          <p className="text-[9px] text-muted uppercase tracking-wider font-bold mb-1 flex items-center gap-1"><CalendarClock size={11} /> Start</p>
+          <p className="text-white text-xs font-semibold leading-none">{auction.startTime ? new Date(auction.startTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</p>
         </div>
-        <div>
-          <p className="text-[10px] text-muted uppercase tracking-wider font-bold mb-1">End</p>
-          <p className="text-white text-xs">{auction.endTime ? new Date(auction.endTime).toLocaleDateString('en-IN') : '—'}</p>
+        <div className="min-w-[85px]">
+          <p className="text-[9px] text-muted uppercase tracking-wider font-bold mb-1 flex items-center gap-1"><CalendarClock size={11} /> End</p>
+          <p className="text-white text-xs font-semibold leading-none">{auction.endTime ? new Date(auction.endTime).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</p>
         </div>
         <button
           onClick={onManage}
-          className="flex items-center gap-1.5 text-xs font-bold text-secondary hover:text-white transition-colors group-hover:underline"
+          className="flex items-center gap-1.5 text-[10px] font-extrabold text-primary hover:text-black hover:bg-primary transition-all duration-300 uppercase tracking-widest border border-primary/20 hover:border-primary bg-primary/5 px-5 py-2.5 rounded-xl self-end lg:self-auto shadow-md"
         >
           Manage <ArrowRight size={13} />
         </button>
@@ -225,28 +234,33 @@ interface EligiblePropertyCardProps {
 
 function EligiblePropertyCard({ property, onCreateAuction }: EligiblePropertyCardProps) {
   return (
-    <div className="flex flex-col bg-dark-card border border-dark-border rounded-2xl overflow-hidden hover:border-primary/40 transition-all group">
-      <div className="relative h-40 bg-black overflow-hidden">
+    <div className="flex flex-col bg-dark-card/30 backdrop-blur-md border border-dark-border/80 hover:border-primary/20 rounded-2xl overflow-hidden group transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,215,0,0.02)] h-full shadow-lg">
+      <div className="relative aspect-[16/10] bg-black overflow-hidden border-b border-dark-border/60">
         {property.images?.[0] ? (
-          <img src={property.images[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img src={property.images[0]} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-750 ease-out" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-muted"><Building2 size={32} /></div>
+          <div className="w-full h-full flex items-center justify-center text-muted/65"><Building2 size={32} /></div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-        <span className="absolute bottom-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 uppercase tracking-wider">
-          Approved
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+        <span className="absolute top-3 left-3 text-[9px] font-bold px-2.5 py-1 rounded-md border bg-emerald-500/10 text-emerald-400 border-emerald-500/20 uppercase tracking-wider backdrop-blur-md shadow-md z-10 pointer-events-none">
+          Approved Listing
         </span>
       </div>
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="font-display font-bold text-white line-clamp-1 mb-1 group-hover:text-primary transition-colors">{property.title}</h3>
-        <p className="text-xs text-muted flex items-center gap-1 mb-3"><MapPin size={11} /> {getCity(property)}, {getState(property)}</p>
-        <p className="text-lg font-bold text-primary mb-4">{getPrice(property)}</p>
-        <button
-          onClick={onCreateAuction}
-          className="mt-auto flex items-center justify-center gap-2 py-2.5 bg-primary text-black font-bold rounded-lg hover:bg-yellow-400 transition-all text-sm"
-        >
-          <Plus size={15} /> Create Auction
-        </button>
+      
+      <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+        <div className="space-y-1.5">
+          <h3 className="font-display font-bold text-base text-white line-clamp-1 group-hover:text-primary transition-colors duration-200">{property.title}</h3>
+          <p className="text-xs text-muted flex items-center gap-1 font-medium truncate"><MapPin size={12} className="text-primary/70 shrink-0" /> {getCity(property)}, {getState(property)}</p>
+        </div>
+        <div className="space-y-3">
+          <p className="text-2xl font-display font-black text-primary tracking-tight leading-none">{getPrice(property)}</p>
+          <button
+            onClick={onCreateAuction}
+            className="w-full flex items-center justify-center gap-1.5 py-3 bg-gradient-to-r from-primary to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-extrabold uppercase tracking-widest text-[10px] rounded-xl shadow-[0_0_15px_rgba(255,215,0,0.15)] hover:shadow-[0_0_25px_rgba(255,215,0,0.25)] transition-all duration-300 active:scale-95"
+          >
+            <Plus size={14} /> Schedule Auction
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -257,39 +271,81 @@ interface StatCardProps {
   label: string;
   value: string | number;
   icon: React.ElementType;
-  color: string;
   isActive: boolean;
   onClick: () => void;
   isLoading: boolean;
 }
 
-function StatCard({ label, value, icon: Icon, color, isActive, onClick, isLoading }: StatCardProps) {
+function StatCard({ label, value, icon: Icon, isActive, onClick, isLoading }: StatCardProps) {
+  const accentGlow = 
+    label === 'Active Auctions' || label === 'Live Now'
+      ? 'hover:shadow-[0_25px_50px_rgba(16,185,129,0.06)] hover:border-emerald-500/40 border-emerald-500/20 text-emerald-400 bg-emerald-500/10'
+      : label === 'Upcoming Auctions' || label === 'Scheduled'
+      ? 'hover:shadow-[0_25px_50px_rgba(59,130,246,0.06)] hover:border-blue-500/40 border-blue-500/20 text-blue-400 bg-blue-500/10'
+      : label === 'Completed Auctions' || label === 'Closed'
+      ? 'hover:shadow-[0_25px_50px_rgba(156,163,175,0.06)] hover:border-gray-500/40 border-gray-500/20 text-gray-400 bg-gray-500/10'
+      : 'hover:shadow-[0_25px_50px_rgba(255,215,0,0.06)] hover:border-primary/40 border-primary/20 text-primary bg-primary/10';
+
+  const progressPct = 
+    label === 'Active Auctions' || label === 'Live Now' ? 'w-[45%]' :
+    label === 'Upcoming Auctions' || label === 'Scheduled' ? 'w-[30%]' :
+    label === 'Completed Auctions' || label === 'Closed' ? 'w-[80%]' : 'w-[65%]';
+
   return (
     <button
       onClick={onClick}
-      className={`relative p-6 bg-dark-card border rounded-2xl overflow-hidden group w-full text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+      className={`relative overflow-hidden bg-gradient-to-br from-black/80 via-[#0A0A0A] to-black/95 backdrop-blur-xl border p-6 rounded-2xl transition-all duration-500 hover:-translate-y-2.5 cursor-pointer group flex flex-col justify-between h-44 shadow-2xl shadow-black/70 w-full text-left ${
         isActive
-          ? 'border-primary shadow-[0_0_20px_rgba(255,215,0,0.15)]'
-          : 'border-dark-border hover:border-primary/40'
+          ? 'border-primary shadow-[0_0_20px_rgba(255,215,0,0.15)] bg-primary/5'
+          : 'border-dark-border/80 hover:border-primary/30'
       }`}
     >
       {/* Background icon watermark */}
-      <div className="absolute -right-4 -top-4 opacity-[0.03] group-hover:opacity-10 transition-opacity duration-300">
-        <Icon size={100} />
+      <div className="absolute -right-4 -top-4 opacity-[0.01] group-hover:opacity-[0.04] transition-opacity duration-500 pointer-events-none text-white">
+        <Icon size={95} />
       </div>
 
       {/* Active indicator dot */}
       {isActive && (
-        <span className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse" />
+        <span className="absolute top-3 right-3 w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
       )}
 
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 bg-black/40 border border-dark-border ${color}`}>
-        <Icon size={20} />
+      <div className="flex justify-between items-start">
+        <div className={`w-12 h-12 rounded-full border flex items-center justify-center transition-all duration-500 group-hover:scale-105 shadow-inner ${
+          isActive ? 'bg-primary/20 border-primary/40 text-primary shadow-[0_0_15px_rgba(255,215,0,0.25)]' : accentGlow
+        }`}>
+          <Icon size={18} />
+        </div>
+        <ArrowUpRight size={15} className="text-muted/60 group-hover:text-white transition-all duration-300" />
       </div>
-      <p className="text-3xl font-display font-bold mb-1 text-white">
-        {isLoading ? '—' : value}
-      </p>
-      <p className="text-xs text-muted font-bold uppercase tracking-wider">{label}</p>
+
+      <div className="space-y-2 w-full">
+        <p className="text-3xl font-display font-black text-white tracking-tight leading-none block select-none">
+          {isLoading ? '—' : value}
+        </p>
+        
+        {/* Mini progress indicator */}
+        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mt-1.5">
+          <div className={`h-full rounded-full transition-all duration-1000 ${
+            isActive ? 'bg-primary' : 
+            label === 'Active Auctions' || label === 'Live Now' ? 'bg-emerald-400' :
+            label === 'Upcoming Auctions' || label === 'Scheduled' ? 'bg-blue-400' :
+            label === 'Completed Auctions' || label === 'Closed' ? 'bg-gray-400' : 'bg-primary'
+          } ${progressPct}`} />
+        </div>
+
+        <div className="flex items-center justify-between pt-0.5">
+          <p className="text-[9px] text-muted/70 font-bold uppercase tracking-widest group-hover:text-muted/95 transition-colors">{label}</p>
+          <span className={`text-[8px] font-bold px-2 py-0.5 rounded flex items-center shrink-0 shadow-sm ${
+            isActive ? 'bg-primary/10 text-primary border border-primary/20' : 
+            label === 'Active Auctions' || label === 'Live Now' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+            label === 'Upcoming Auctions' || label === 'Scheduled' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
+            label === 'Completed Auctions' || label === 'Closed' ? 'bg-gray-500/10 text-gray-400 border border-gray-500/20' : 'bg-primary/10 text-primary border border-primary/20'
+          }`}>
+            {isActive ? 'Active filter' : 'Filter'}
+          </span>
+        </div>
+      </div>
     </button>
   );
 }
@@ -297,7 +353,6 @@ function StatCard({ label, value, icon: Icon, color, isActive, onClick, isLoadin
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function SellerAuctionDashboard() {
   const navigate = useNavigate();
-  // 'All' means no filter from stat card; tabs still work independently
   const [activeTab, setActiveTab] = useState<Tab>('All');
   const [modalProperty, setModalProperty] = useState<any>(null);
 
@@ -352,27 +407,26 @@ export default function SellerAuctionDashboard() {
       tab: 'All' as Tab,
     },
     {
-      label: 'Scheduled',
+      label: 'Upcoming Auctions',
       value: scheduledCount,
       icon: CalendarClock,
       color: 'text-blue-400',
       tab: 'Scheduled' as Tab,
     },
     {
-      label: 'Live Now',
+      label: 'Active Auctions',
       value: liveCount,
       icon: Activity,
       color: 'text-emerald-400',
       tab: 'Live' as Tab,
     },
     {
-      label: 'Closed',
+      label: 'Completed Auctions',
       value: closedCount,
       icon: CheckCircle,
       color: 'text-gray-400',
       tab: 'Closed' as Tab,
     },
-
     {
       label: 'Highest Bid',
       value: typeof stats.highestBid === 'number' ? formatPrice(stats.highestBid) : '₹0',
@@ -385,36 +439,58 @@ export default function SellerAuctionDashboard() {
   const isLoading = auctionsLoading || propsLoading;
 
   return (
-    <div className="min-h-screen text-white bg-dark">
-      {/* Hero */}
-      <div className="bg-gradient-to-b from-black to-dark border-b border-dark-border pb-12 pt-16 px-4 md:px-12">
-        <div className="max-w-[1400px] mx-auto">
-          <p className="text-primary text-xs font-bold uppercase tracking-widest mb-2">Seller</p>
-          <h1 className="text-4xl md:text-6xl font-display font-black tracking-tight text-white mb-4">Auction Dashboard</h1>
-          <p className="text-muted text-lg max-w-xl">
-            Monitor your property auctions, track bids in real time, and manage new auction creation.
-          </p>
+    <div className="min-h-screen text-white bg-[#030303] pb-16 relative overflow-hidden font-sans">
+      {/* Decorative Glows */}
+      <div className="absolute right-0 top-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute left-1/4 bottom-1/4 w-72 h-72 bg-secondary/5 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Hero Outer Container with Glow */}
+      <div className="max-w-[1500px] mx-auto px-6 md:px-12 pt-10">
+        <div className="relative group/hero">
+          {/* Subtle gold ambient glow behind the card */}
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-yellow-600/2 rounded-3xl blur-3xl opacity-50 pointer-events-none" />
+
+          {/* Hero Banner */}
+          <div className="relative overflow-hidden rounded-3xl border border-primary/20 p-8 md:p-12 min-h-[340px] flex flex-col justify-between bg-gradient-to-br from-black via-black/95 to-primary/5 shadow-[0_20px_50px_rgba(0,0,0,0.85)] group z-10">
+            {/* Background luxury house image */}
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-30 group-hover/hero:scale-105 transition-transform duration-[6000ms] ease-out pointer-events-none z-0"
+              style={{ backgroundImage: `url('https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1200&q=80')` }}
+            />
+            {/* Subtle overlay gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent pointer-events-none z-0" />
+
+            {/* Content info */}
+            <div className="relative z-10 space-y-4 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-widest">
+                <Sparkles size={12} className="animate-pulse" /> Live Control Center
+              </div>
+              <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white leading-tight">
+                Auction Control Center
+              </h1>
+              <p className="text-muted/80 font-light text-xs md:text-sm leading-relaxed max-w-md">
+                Manage live auctions, monitor bids, and control property bidding.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-[1400px] mx-auto px-4 md:px-12 py-12 space-y-12">
+      <div className="max-w-[1500px] mx-auto px-6 md:px-12 mt-10 md:mt-12 space-y-12 relative z-10 animate-fade-in">
 
         {/* ── Stat Cards (clickable → filter) ──────────────────────────────── */}
-        <div>
-          <p className="text-xs text-muted font-bold uppercase tracking-widest mb-4">
-            Click any card to filter your auctions below
+        <div className="space-y-4">
+          <p className="text-[10px] text-muted/60 font-bold uppercase tracking-widest flex items-center gap-1.5">
+            <Sparkles size={11} className="text-primary" /> Click any card to filter your auctions list below
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
             {statCards.map((s) => (
               <StatCard
                 key={s.label}
                 label={s.label}
                 value={s.value}
                 icon={s.icon}
-                color={s.color}
                 isActive={
-                  // "Total Auctions" lights up when All is active
-                  // Other cards light up when their specific tab is active
                   s.label === 'Total Auctions'
                     ? activeTab === 'All'
                     : activeTab === s.tab
@@ -428,17 +504,19 @@ export default function SellerAuctionDashboard() {
 
         {/* ── Properties Ready for Auction ─────────────────────────────────── */}
         {(eligibleProperties.length > 0 || propsLoading) && (
-          <div>
-            <div className="flex items-center gap-3 mb-6">
-              <ShieldAlert size={20} className="text-primary" />
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b border-dark-border/40 pb-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner">
+                <ShieldAlert size={18} className="text-primary animate-pulse" />
+              </div>
               <div>
-                <h2 className="text-2xl font-display font-bold">Properties Ready for Auction</h2>
-                <p className="text-muted text-sm mt-0.5">Approved properties that don't have an auction yet.</p>
+                <h2 className="text-2xl font-display font-extrabold text-white tracking-tight">Approved Properties Inventory</h2>
+                <p className="text-muted/70 text-xs mt-0.5">Eligible properties ready to be launched on live auctions</p>
               </div>
             </div>
             {propsLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[1, 2, 3].map(i => <div key={i} className="h-64 bg-dark-card border border-dark-border rounded-2xl animate-pulse" />)}
+                {[1, 2, 3].map(i => <div key={i} className="aspect-[16/10] w-full bg-dark-card border border-dark-border/60 rounded-2xl animate-pulse" />)}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -455,65 +533,73 @@ export default function SellerAuctionDashboard() {
         )}
 
         {/* ── Auctions List (filtered) ──────────────────────────────────────── */}
-        <div className="bg-dark-card border border-dark-border rounded-2xl p-6 md:p-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-gradient-to-br from-dark-card/50 via-black/30 to-dark-card/50 border border-dark-border/80 rounded-3xl p-6 md:p-8 shadow-xl space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-dark-border/60 pb-4">
             <div>
-              <h2 className="text-2xl font-display font-bold">Your Auctions</h2>
+              <h2 className="text-2xl font-display font-extrabold text-white tracking-tight">Your Real-Time Auctions</h2>
               {activeTab !== 'All' && (
-                <p className="text-sm text-muted mt-1">
+                <p className="text-xs text-muted mt-1.5 flex items-center gap-1.5">
                   Showing <span className="text-primary font-bold">{activeTab}</span> auctions
-                  &nbsp;·&nbsp;
+                  <span className="text-dark-border">•</span>
                   <button
                     onClick={() => setActiveTab('All')}
-                    className="text-secondary hover:text-white underline underline-offset-2 transition-colors"
+                    className="text-primary hover:text-yellow-400 underline underline-offset-2 transition-colors font-semibold"
                   >
                     Clear filter
                   </button>
                 </p>
               )}
             </div>
-          </div>
 
-          {/* Tab Pills */}
-          <div className="flex gap-1 bg-black/40 border border-dark-border rounded-xl p-1 mb-8 w-fit">
-            {TABS.map(t => (
-              <button
-                key={t}
-                onClick={() => setActiveTab(t)}
-                className={`px-5 py-2 rounded-lg text-sm font-bold transition-all ${
-                  activeTab === t ? 'bg-primary text-black' : 'text-muted hover:text-white'
-                }`}
-              >
-                {t}
-                {t !== 'All' && t !== 'Highest Bids' && (
-                  <span className="ml-2 text-[10px] font-bold opacity-70">
-                    {t === 'Scheduled' ? scheduledCount : t === 'Live' ? liveCount : closedCount}
-                  </span>
-                )}
-              </button>
-            ))}
+            {/* Tab Pills */}
+            <div className="flex flex-wrap gap-1 bg-black/45 border border-dark-border/80 rounded-xl p-1 w-fit self-start md:self-auto">
+              {TABS.map(t => (
+                <button
+                  key={t}
+                  onClick={() => setActiveTab(t)}
+                  className={`px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                    activeTab === t 
+                      ? 'bg-primary text-black shadow-md' 
+                      : 'text-muted hover:text-white'
+                  }`}
+                >
+                  {t}
+                  {t !== 'All' && t !== 'Highest Bids' && (
+                    <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                      activeTab === t ? 'bg-black/15 text-black' : 'bg-white/5 text-muted'
+                    }`}>
+                      {t === 'Scheduled' ? scheduledCount : t === 'Live' ? liveCount : closedCount}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Auction List */}
           {auctionsLoading ? (
             <div className="space-y-4">
-              {[1, 2, 3].map(i => <div key={i} className="h-24 bg-dark-border/40 rounded-xl animate-pulse" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-24 bg-dark-border/40 rounded-2xl animate-pulse" />)}
             </div>
           ) : filteredAuctions.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-dark-border rounded-xl bg-black/20">
-              <Gavel size={40} className="mx-auto mb-4 text-muted opacity-30" />
-              <h3 className="font-display font-bold text-white mb-2">
-                No {activeTab !== 'All' ? activeTab : ''} Auctions
-              </h3>
-              <p className="text-muted text-sm max-w-sm mx-auto mb-6">
-                {activeTab === 'All'
-                  ? "You haven't created any auctions yet. Select an approved property above to get started."
-                  : `No ${activeTab.toLowerCase()} auctions at this time.`}
-              </p>
+            <div className="text-center py-20 border border-dashed border-dark-border/80 rounded-2xl bg-black/20 space-y-4">
+              <div className="p-4 bg-white/5 rounded-full text-muted border border-white/5 w-fit mx-auto shadow-inner">
+                <Gavel size={32} className="opacity-45" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-display font-bold text-white">
+                  No {activeTab !== 'All' ? activeTab : ''} Auctions Scheduled
+                </h3>
+                <p className="text-muted text-xs max-w-xs mx-auto">
+                  {activeTab === 'All'
+                    ? "You haven't scheduled any property auctions yet. Choose an approved property from the inventory above to begin."
+                    : `There are currently no auctions categorized under ${activeTab.toLowerCase()}.`}
+                </p>
+              </div>
               {activeTab === 'All' && (
                 <button
                   onClick={() => navigate('/seller/my-properties?filter=approved')}
-                  className="px-6 py-2.5 bg-primary text-black font-bold rounded-lg hover:bg-yellow-400 transition-colors text-sm"
+                  className="bg-gradient-to-r from-primary to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-extrabold uppercase tracking-widest text-[10px] px-6 py-3.5 rounded-xl hover:shadow-gold transition-all active:scale-95"
                 >
                   View Approved Properties
                 </button>
