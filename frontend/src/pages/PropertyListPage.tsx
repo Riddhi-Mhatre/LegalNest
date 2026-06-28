@@ -6,11 +6,13 @@ import { PropertyGrid } from '../components/properties/PropertyGrid';
 import { PropertyFilters } from '../components/properties/PropertyFilters';
 import { PropertyMap } from '../components/properties/PropertyMap';
 import { Map, List, SlidersHorizontal } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function PropertyListPage() {
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
   const filters = useFilterStore();
+  const navigate = useNavigate();
 
   const queryFilters = useMemo(() => ({
     status: 'approved',
@@ -85,8 +87,11 @@ export default function PropertyListPage() {
             {viewMode === 'grid' ? (
               <PropertyGrid properties={properties || []} loading={isLoading} />
             ) : (
-              <div className="sticky top-24">
-                <PropertyMap properties={properties || []} />
+              <div className="sticky top-24 h-[calc(100vh-8rem)]">
+                <PropertyMap properties={properties || []} onPropertyClick={(id) => {
+                  const basePath = window.location.pathname.startsWith('/buyer') ? '/buyer/properties' : '/properties';
+                  navigate(`${basePath}/${id}`);
+                }} />
               </div>
             )}
           </div>

@@ -50,6 +50,7 @@ const DocumentUploadPage           = lazy(() => import('./features/seller/pages/
 const SellerAuctionDashboard       = lazy(() => import('./features/seller/pages/SellerAuctionDashboard'));
 const SellerAuctionManagementPage  = lazy(() => import('./features/seller/pages/SellerAuctionManagementPage'));
 const SellerIdentityDocsPage       = lazy(() => import('./features/seller/pages/SellerIdentityDocsPage'));
+const SellerProfilePage            = lazy(() => import('./features/seller/pages/SellerProfilePage'));
 
 import { BuyerLayout } from './components/layout/BuyerLayout';
 import { SellerLayout } from './components/layout/SellerLayout';
@@ -116,6 +117,7 @@ export default function App() {
                   <Route path="/seller/payments"         element={<PaymentsPage />} />
                   <Route path="/seller/documents"        element={<DocumentUploadPage />} />
                   <Route path="/seller/identity-documents" element={<SellerIdentityDocsPage />} />
+                  <Route path="/seller/profile"          element={<SellerProfilePage />} />
                 </Route>
               </Route>
 

@@ -175,12 +175,12 @@ export default function SellerDashboard() {
 
             {/* Floating glass verification badge */}
             {user?.isVerified ? (
-              <div className="absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl border border-primary/30 bg-black/60 backdrop-blur-md flex items-center gap-2 shadow-lg shadow-[0_0_12px_rgba(255,215,0,0.02)]">
+              <div className="hidden md:flex absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl border border-primary/30 bg-black/60 backdrop-blur-md items-center gap-2 shadow-lg shadow-[0_0_12px_rgba(255,215,0,0.02)]">
                 <div className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
                 <span className="text-[9px] font-bold text-primary uppercase tracking-widest font-sans">Verified Seller Accreditation</span>
               </div>
             ) : (
-              <div className="absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl border border-red-500/30 bg-black/60 backdrop-blur-md flex items-center gap-2 shadow-lg">
+              <div className="hidden md:flex absolute top-6 right-6 z-10 px-4 py-2 rounded-2xl border border-red-500/30 bg-black/60 backdrop-blur-md items-center gap-2 shadow-lg">
                 <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
                 <span className="text-[9px] font-bold text-red-400 uppercase tracking-widest font-sans font-mono">Awaiting Document Approval</span>
               </div>
@@ -191,8 +191,8 @@ export default function SellerDashboard() {
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-widest">
                 <Sparkles size={12} className="animate-pulse" /> Luxury Property Hub
               </div>
-              <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white leading-tight">
-                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 font-extrabold">{user?.name?.split(' ')[0] || 'Seller'}</span>
+              <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white leading-normal md:leading-tight pb-1">
+                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 font-extrabold inline-block pb-1">{user?.name?.split(' ')[0] || 'Seller'}</span>
               </h1>
               <p className="text-muted/80 font-light text-xs md:text-sm leading-relaxed max-w-md">
                 Manage your premium real estate portfolio, track listing performance, schedule live auctions.

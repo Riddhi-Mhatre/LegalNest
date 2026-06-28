@@ -6,6 +6,7 @@ import {
   getDashboard,
   getMyProperties,
   getDocumentUploadUrl,
+  getDocumentReadUrl,
   saveDocuments,
   payPlatformFee,
   getMyPayments,
@@ -22,6 +23,7 @@ router.use(authenticate, requireRole(['seller']));
 router.get('/dashboard', getDashboard);
 router.get('/properties', getMyProperties);
 router.get('/document-upload-url', getDocumentUploadUrl);
+router.get('/document-read-url', getDocumentReadUrl);
 router.patch('/properties/:id/documents', saveDocuments);
 router.post('/properties/:id/pay-fee', payPlatformFee);
 router.get('/payments', getMyPayments);

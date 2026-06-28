@@ -5,7 +5,7 @@ import { NotificationPanel } from '../../../components/common/NotificationPanel'
 import { updateProfile, uploadAvatarToS3 } from '../../../services/userService';
 import { toast } from 'sonner';
 
-export default function BuyerProfilePage() {
+export default function SellerProfilePage() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'personal' | 'notifications'>('personal');
 
@@ -114,7 +114,7 @@ export default function BuyerProfilePage() {
                     {profileImage ? (
                       <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-3xl font-bold text-primary">{name.charAt(0) || 'B'}</span>
+                      <span className="text-3xl font-bold text-primary">{name.charAt(0) || 'S'}</span>
                     )}
                  </div>
                  {isUploading && (
@@ -179,7 +179,7 @@ export default function BuyerProfilePage() {
 
               <div className="space-y-2">
                  <label className="text-xs font-bold text-muted uppercase tracking-widest">Bio</label>
-                 <textarea rows={4} value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us a bit about what kind of properties you are looking for..." className="w-full bg-black border border-dark-border rounded p-3 text-white focus:border-primary outline-none transition-colors custom-scrollbar"></textarea>
+                 <textarea rows={4} value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell us a bit about yourself and your properties..." className="w-full bg-black border border-dark-border rounded p-3 text-white focus:border-primary outline-none transition-colors custom-scrollbar"></textarea>
               </div>
 
                <div className="pt-6 border-t border-dark-border flex justify-end gap-4">

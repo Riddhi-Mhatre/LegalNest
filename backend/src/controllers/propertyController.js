@@ -6,7 +6,8 @@ import { HTTP } from '../utils/constants.js';
 import { createNotification } from '../services/notificationService.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { s3Client } from '../config/aws.js';
+import { s3Client, locationClient } from '../config/aws.js';
+import { SearchPlaceIndexForTextCommand } from '@aws-sdk/client-location';
 import { env } from '../config/env.js';
 
 // GET /v1/properties
@@ -76,10 +77,34 @@ export const createProperty = async (req, res, next) => {
     const sellerId = req.user.userId;
     const propertyId = generateUUID();
     const now = new Date().toISOString();
+    
+    // Geocoding step
+    let lat, lng;
+    try {
+      const addressString = `${req.body.address || ''}, ${req.body.city || ''}, ${req.body.state || ''} ${req.body.pincode || ''}`;
+      if (addressString.trim().length > 3) {
+        const command = new SearchPlaceIndexForTextCommand({
+          IndexName: env.LOCATION_INDEX_NAME || 'LegalNestPlaceIndex',
+          Text: addressString,
+          MaxResults: 1
+        });
+        const response = await locationClient.send(command);
+        if (response.Results && response.Results.length > 0) {
+          const point = response.Results[0].Place.Geometry.Point;
+          lng = point[0];
+          lat = point[1];
+        }
+      }
+    } catch (geoErr) {
+      console.error('Geocoding error:', geoErr);
+    }
+
     const property = await PropertyModel.createProperty({
       propertyId,
       sellerId,
       ...req.body,
+      lat,
+      lng,
       verificationStatus: 'verified',
       status: 'approved',
       viewsCount: 0,
@@ -105,8 +130,35 @@ export const createProperty = async (req, res, next) => {
 // PUT /v1/properties/:id
 export const updateProperty = async (req, res, next) => {
   try {
+    // Geocoding step if address changes
+    let lat = req.body.lat;
+    let lng = req.body.lng;
+    
+    if (req.body.address || req.body.city || req.body.pincode) {
+      try {
+        const addressString = `${req.body.address || ''}, ${req.body.city || ''}, ${req.body.state || ''} ${req.body.pincode || ''}`;
+        if (addressString.trim().length > 3) {
+          const command = new SearchPlaceIndexForTextCommand({
+            IndexName: env.LOCATION_INDEX_NAME || 'LegalNestPlaceIndex',
+            Text: addressString,
+            MaxResults: 1
+          });
+          const response = await locationClient.send(command);
+          if (response.Results && response.Results.length > 0) {
+            const point = response.Results[0].Place.Geometry.Point;
+            lng = point[0];
+            lat = point[1];
+          }
+        }
+      } catch (geoErr) {
+        console.error('Geocoding error:', geoErr);
+      }
+    }
+
     const property = await PropertyModel.updateProperty(req.params.id, {
       ...req.body,
+      ...(lat !== undefined && { lat }),
+      ...(lng !== undefined && { lng }),
       updatedAt: new Date().toISOString(),
     });
     res.json({ success: true, data: property });

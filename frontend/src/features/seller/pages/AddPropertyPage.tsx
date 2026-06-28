@@ -1,7 +1,7 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { createProperty } from '../../../services/propertyService';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { createProperty, updateProperty, getProperty } from '../../../services/propertyService';
 import { uploadFileToS3 } from '../../../services/sellerService';
 import {
   Building2, MapPin, DollarSign, Info, Check,
@@ -28,6 +28,9 @@ type PincodeStatus = 'idle' | 'loading' | 'success' | 'error';
 
 export default function AddPropertyPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditMode = !!editId;
   const [step, setStep] = useState(1);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [pincodeStatus, setPincodeStatus] = useState<PincodeStatus>('idle');
@@ -49,6 +52,35 @@ export default function AddPropertyPage() {
     amenities: [] as string[],
     images: [] as string[],
   });
+
+  const { data: propertyData, isLoading: isPropertyLoading } = useQuery({
+    queryKey: ['property', editId],
+    queryFn: () => getProperty(editId!),
+    enabled: isEditMode,
+  });
+
+  useEffect(() => {
+    if (propertyData) {
+      setForm({
+        title: propertyData.title || '',
+        description: propertyData.description || '',
+        type: propertyData.type || 'apartment',
+        salePrice: propertyData.salePrice ? String(propertyData.salePrice) : propertyData.price ? String(propertyData.price) : '',
+        bedrooms: propertyData.bedrooms ? String(propertyData.bedrooms) : '',
+        bathrooms: propertyData.bathrooms ? String(propertyData.bathrooms) : '',
+        area: propertyData.area ? String(propertyData.area) : '',
+        address: propertyData.location?.address || propertyData.address || '',
+        city: propertyData.location?.city || propertyData.city || '',
+        state: propertyData.location?.state || propertyData.state || '',
+        pincode: propertyData.location?.pincode || propertyData.pincode || '',
+        amenities: propertyData.amenities || [],
+        images: propertyData.images || [],
+      });
+      if (propertyData.location?.pincode || propertyData.pincode) {
+        setPincodeStatus('success');
+      }
+    }
+  }, [propertyData]);
 
   const set = (field: string, value: any) =>
     setForm(prev => ({ ...prev, [field]: value }));
@@ -132,8 +164,8 @@ export default function AddPropertyPage() {
     set('images', form.images.filter((_, i) => i !== idx));
 
   const { mutate: submitProperty, isPending } = useMutation({
-    mutationFn: () =>
-      createProperty({
+    mutationFn: () => {
+      const payload = {
         title: form.title,
         description: form.description,
         type: form.type,
@@ -149,14 +181,19 @@ export default function AddPropertyPage() {
         pincode: form.pincode,
         amenities: form.amenities,
         images: form.images,
-      }),
+      };
+      if (isEditMode) {
+        return updateProperty(editId!, payload);
+      }
+      return createProperty(payload);
+    },
 
     onSuccess: (data) => {
-      navigate(`/seller/documents?propertyId=${data.propertyId}`);
+      navigate(`/seller/documents?propertyId=${isEditMode ? editId : data.propertyId}`);
     },
 
     onError: () => {
-      alert('Failed to add property. Please try again.');
+      alert(`Failed to ${isEditMode ? 'update' : 'add'} property. Please try again.`);
     },
   });
 
@@ -178,12 +215,12 @@ export default function AddPropertyPage() {
         {/* Header */}
         <div className="space-y-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-widest">
-            <Sparkles size={12} className="animate-pulse" /> New Listing Wizard
+            <Sparkles size={12} className="animate-pulse" /> {isEditMode ? 'Edit Listing Wizard' : 'New Listing Wizard'}
           </div>
           <h1 className="text-4xl md:text-5xl font-display font-extrabold tracking-tight text-white leading-tight">
-            Add New <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 font-black">Property</span>
+            {isEditMode ? 'Edit ' : 'Add New '}<span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-yellow-400 to-yellow-600 font-black">Property</span>
           </h1>
-          <p className="text-muted/90 font-light text-sm max-w-xl">Fill in the details to list your property on GharBid.</p>
+          <p className="text-muted/90 font-light text-sm max-w-xl">{isEditMode ? 'Update the details of your property.' : 'Fill in the details to list your property on GharBid.'}</p>
         </div>
 
         {/* Progress */}
@@ -517,9 +554,9 @@ export default function AddPropertyPage() {
                 className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary hover:bg-yellow-400 text-black font-bold uppercase tracking-widest text-xs shadow-gold transition-all duration-300 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
               >
                 {isPending ? (
-                  <><Loader2 size={16} className="animate-spin" /> Submitting...</>
+                  <><Loader2 size={16} className="animate-spin" /> {isEditMode ? 'Updating...' : 'Submitting...'}</>
                 ) : (
-                  <><Check size={16} /> Submit Listing</>
+                  <><Check size={16} /> {isEditMode ? 'Save Changes' : 'Submit Listing'}</>
                 )}
               </button>
             )}

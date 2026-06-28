@@ -1,7 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { ROUTES } from '../../utils/constants';
-import { Bell, LogOut, User, ArrowLeft } from 'lucide-react';
+import { Bell, LogOut, User } from 'lucide-react';
+import { BackButton } from '../common/BackButton';
+import { NotificationPanel } from '../common/NotificationPanel';
+import { useQuery } from '@tanstack/react-query';
+import { getNotifications } from '../../services/userService';
 import { useState } from 'react';
 
 export const Navbar = () => {
@@ -9,6 +13,14 @@ export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: getNotifications,
+    enabled: isAuthenticated && !!user,
+  });
+  const hasUnread = notifications?.some?.((n: any) => !n.isRead);
 
   const handleLogout = () => {
     logout();
@@ -22,18 +34,10 @@ export const Navbar = () => {
   return (
     <nav className="sticky top-0 z-50 border-b border-dark-border bg-dark-card/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 md:h-16">
           {/* Back Arrow & Logo */}
           <div className="flex items-center gap-3">
-            {location.pathname !== '/' && (
-              <button 
-                onClick={() => navigate(-1)} 
-                className="p-1.5 rounded-full hover:bg-white/10 text-muted hover:text-white transition-all flex items-center justify-center"
-                aria-label="Go Back"
-              >
-                <ArrowLeft size={20} />
-              </button>
-            )}
+            <BackButton className="md:mr-2" />
             <Link to={ROUTES.HOME} className="flex items-center gap-2 group" id="nav-logo">
               <span className="text-xl font-display font-bold text-gradient-gold group-hover:opacity-90 transition-opacity animate-brand-intro inline-block origin-left">
                 GharBid
@@ -52,9 +56,22 @@ export const Navbar = () => {
           <div className="flex items-center gap-2">
             {isAuthenticated && user ? (
               <>
-                <Link to={ROUTES.CHAT} className="btn-ghost p-2" id="nav-chat" aria-label="Chat">
-                  <Bell size={18} />
-                </Link>
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="p-2 rounded-full hover:bg-white/10 transition-colors relative group"
+                    aria-label="Notifications"
+                  >
+                    <Bell size={18} className="text-white/80 group-hover:text-primary transition-colors" />
+                    {hasUnread && <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full border-2 border-black"></span>}
+                  </button>
+                  
+                  {showNotifications && (
+                    <div className="absolute right-0 top-full mt-4 w-80 md:w-96 bg-dark-card border border-dark-border shadow-2xl rounded-xl overflow-hidden z-50 animate-fade-in">
+                      <NotificationPanel onClose={() => setShowNotifications(false)} />
+                    </div>
+                  )}
+                </div>
                 <div className="relative">
                   <button
                     id="nav-user-menu"

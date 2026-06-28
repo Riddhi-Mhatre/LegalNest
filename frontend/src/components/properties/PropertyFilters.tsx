@@ -1,9 +1,27 @@
+import { useState, useEffect } from 'react';
 import { useFilterStore } from '../../store/filterStore';
 import { PROPERTY_TYPES, AMENITIES } from '../../utils/constants';
 import { formatShortPrice } from '../../utils/formatters';
 
 export const PropertyFilters = () => {
   const { propertyType, priceRange, amenities, setPropertyType, setPriceRange, setAmenities, reset } = useFilterStore();
+
+  const [localMaxPrice, setLocalMaxPrice] = useState(priceRange[1]);
+
+  // Sync external changes (like reset) to local state
+  useEffect(() => {
+    setLocalMaxPrice(priceRange[1]);
+  }, [priceRange[1]]);
+
+  // Debounce pushing local state to the global store
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (localMaxPrice !== priceRange[1]) {
+        setPriceRange([priceRange[0], localMaxPrice]);
+      }
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [localMaxPrice, priceRange, setPriceRange]);
 
   return (
     <aside className="w-full space-y-6" aria-label="Property Filters">
@@ -36,7 +54,7 @@ export const PropertyFilters = () => {
       {/* Price Range */}
       <div>
         <label className="text-xs text-muted font-medium uppercase tracking-wide mb-2 block">
-          Price: {formatShortPrice(priceRange[0])} – {formatShortPrice(priceRange[1])}
+          Price: {formatShortPrice(priceRange[0])} – {formatShortPrice(localMaxPrice)}
         </label>
         <input
           type="range"
@@ -44,8 +62,8 @@ export const PropertyFilters = () => {
           min={0}
           max={100_000_000}
           step={500_000}
-          value={priceRange[1]}
-          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+          value={localMaxPrice}
+          onChange={(e) => setLocalMaxPrice(Number(e.target.value))}
           className="w-full accent-primary"
           aria-label="Maximum price"
         />

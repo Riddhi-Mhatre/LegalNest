@@ -3,6 +3,10 @@ import * as UserDocsModel from '../models/dynamodb/UserDocsModel.js';
 import * as s3Service from '../services/s3Service.js';
 import * as buyerNotificationService from '../services/buyerNotificationService.js';
 import { HTTP } from '../utils/constants.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3Client } from '../config/aws.js';
+import { env } from '../config/env.js';
 
 // GET /v1/users/profile
 export const getProfile = async (req, res, next) => {
@@ -42,6 +46,24 @@ export const getDocumentUploadUrl = async (req, res, next) => {
     const { fileName, fileType, docType } = req.body;
     const url = await s3Service.getDocumentUploadUrl(userId, fileName, fileType, docType);
     res.json({ success: true, data: { uploadUrl: url.uploadUrl, s3Key: url.s3Key } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /v1/users/upload-avatar-url
+export const getAvatarUploadUrl = async (req, res, next) => {
+  try {
+    const { fileName, contentType } = req.body;
+    const key = `avatars/${req.user.userId}/${Date.now()}-${fileName}`;
+    const command = new PutObjectCommand({
+      Bucket: env.S3_UPLOADS_BUCKET,
+      Key: key,
+      ContentType: contentType,
+    });
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 300 });
+    const publicUrl = `https://${env.S3_UPLOADS_BUCKET}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
+    res.json({ success: true, data: { uploadUrl, publicUrl, key } });
   } catch (err) {
     next(err);
   }

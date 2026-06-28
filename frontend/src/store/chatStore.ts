@@ -9,7 +9,7 @@ interface ChatState {
   unreadCounts: Record<string, number>;
   hasUnreadAlerts: boolean;
   setRooms: (rooms: ChatRoom[]) => void;
-  setActiveRoom: (roomId: string) => void;
+  setActiveRoom: (roomId: string | null) => void;
   addMessage: (roomId: string, message: Message) => void;
   setMessages: (roomId: string, messages: Message[]) => void;
   markRoomRead: (roomId: string) => void;

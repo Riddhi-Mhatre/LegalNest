@@ -5,6 +5,7 @@ import { expressInterest, getBuyerInquiries } from '../services/inquiryService';
 import { getSavedProperties, saveProperty, removeSavedProperty } from '../services/userService';
 import { useAuthStore } from '../store/authStore';
 import { ImageGallery } from '../components/properties/ImageGallery';
+import { PropertyMap } from '../components/properties/PropertyMap';
 import { FullPageLoader } from '../components/common/Loader';
 import { formatPrice } from '../utils/formatters';
 import { toast } from 'sonner';
@@ -56,6 +57,8 @@ export default function PropertyDetailPage() {
   const state = property?.location?.state ?? (property as any)?.state ?? '';
   const address = property?.location?.address ?? (property as any)?.address ?? '';
   const pincode = property?.location?.pincode ?? (property as any)?.pincode ?? '';
+  const lat = property?.location?.lat ?? (property as any)?.lat;
+  const lng = property?.location?.lng ?? (property as any)?.lng;
   const price = property?.price ?? (property as any)?.salePrice ?? (property as any)?.rentPrice ?? 0;
 
   const { data: savedItems = [] } = useQuery({
@@ -106,11 +109,11 @@ export default function PropertyDetailPage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 lg:px-8 mt-[-4rem] relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-8">
           
-          {/* Main Details */}
-          <div className="lg:col-span-2 space-y-8">
-            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl shadow-xl backdrop-blur-xl">
+          {/* Main Details (Title & Stats) */}
+          <div className="lg:col-span-2 lg:col-start-1 lg:row-start-1">
+            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl shadow-xl backdrop-blur-xl h-full">
               <div className="flex flex-wrap items-center gap-3 mb-4">
                   <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold tracking-wide uppercase">
                     <ShieldCheck size={14} /> Verified
@@ -125,9 +128,9 @@ export default function PropertyDetailPage() {
                 </span>
               </div>
               
-              <h1 className="text-3xl md:text-5xl font-display font-black leading-tight mb-4">{property.title}</h1>
+              <h1 className="text-2xl md:text-3xl lg:text-5xl font-display font-black leading-tight mb-4">{property.title}</h1>
               
-              <p className="text-lg text-muted flex items-center gap-2 mb-8">
+              <p className="text-sm md:text-lg text-muted flex items-center gap-2 mb-8">
                 <MapPin className="text-primary" size={20} /> 
                 {address}{address && city ? ', ' : ''}{city}{city && state ? ', ' : ''}{state} {pincode}
               </p>
@@ -136,100 +139,37 @@ export default function PropertyDetailPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-6 bg-black/40 rounded-xl border border-dark-border">
                 <div className="flex flex-col items-center justify-center p-2">
                   <Bed size={24} className="mb-2 text-primary" />
-                  <p className="font-display font-bold text-2xl">{property.bedrooms || '-'}</p>
+                  <p className="font-display font-bold text-xl md:text-2xl">{property.bedrooms || '-'}</p>
                   <p className="text-xs text-muted uppercase tracking-wider font-bold">Bedrooms</p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 border-l border-dark-border sm:border-l-0">
                   <Bath size={24} className="mb-2 text-primary" />
-                  <p className="font-display font-bold text-2xl">{property.bathrooms || '-'}</p>
+                  <p className="font-display font-bold text-xl md:text-2xl">{property.bathrooms || '-'}</p>
                   <p className="text-xs text-muted uppercase tracking-wider font-bold">Bathrooms</p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 border-t sm:border-t-0 sm:border-l border-dark-border">
                   <Square size={24} className="mb-2 text-primary" />
-                  <p className="font-display font-bold text-2xl">{property.area?.toLocaleString()}</p>
+                  <p className="font-display font-bold text-xl md:text-2xl">{property.area?.toLocaleString()}</p>
                   <p className="text-xs text-muted uppercase tracking-wider font-bold">Sq Ft</p>
                 </div>
                 <div className="flex flex-col items-center justify-center p-2 border-t border-l sm:border-t-0 border-dark-border">
                   <Building2Icon size={24} className="mb-2 text-primary" />
-                  <p className="font-display font-bold text-xl capitalize line-clamp-1">{property.type}</p>
+                  <p className="font-display font-bold text-lg md:text-xl capitalize line-clamp-1">{property.type}</p>
                   <p className="text-xs text-muted uppercase tracking-wider font-bold">Property Type</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
-              <h2 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
-                <FileTextIcon /> Property Description
-              </h2>
-              <div className="prose prose-invert max-w-none text-muted leading-relaxed">
-                <p className="whitespace-pre-wrap text-lg">{property.description}</p>
-              </div>
-            </div>
-
-            {/* Amenities */}
-            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
-              <h2 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
-                <SparklesIcon /> Premium Amenities
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {property.amenities?.map((a: string) => (
-                  <div key={a} className="flex items-center gap-3 p-4 rounded-xl bg-black/40 border border-dark-border hover:border-primary/30 transition-colors">
-                    <div className="w-2 h-2 rounded-full bg-primary" />
-                    <span className="text-sm font-semibold text-white/90 capitalize">
-                      {a.replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Location */}
-            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
-              <h2 className="text-2xl font-bold mb-6 font-display flex items-center gap-2">
-                <MapPin className="text-primary" /> Location
-              </h2>
-              <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-xs text-muted uppercase tracking-wider mb-1">City</p>
-                  <p className="font-bold">{city || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted uppercase tracking-wider mb-1">State</p>
-                  <p className="font-bold">{state || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted uppercase tracking-wider mb-1">Pincode</p>
-                  <p className="font-bold">{pincode || '—'}</p>
-                </div>
-                <div className="col-span-2 md:col-span-1">
-                  <p className="text-xs text-muted uppercase tracking-wider mb-1">Address</p>
-                  <p className="font-bold text-sm">{address || '—'}</p>
-                </div>
-              </div>
-              <div className="h-[400px] w-full rounded-xl overflow-hidden border border-dark-border relative bg-black/50">
-                {/* Placeholder Map Component - Ready for Google Maps */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                  <MapPin size={48} className="text-primary/50 mb-4" />
-                  <h3 className="font-display font-bold text-xl mb-2">Location Map</h3>
-                  <p className="text-muted text-sm max-w-sm mb-6">Interactive map view will be available once Google Maps integration is complete.</p>
-                  <button className="px-6 py-2 rounded-lg bg-dark-hover border border-dark-border text-sm font-bold hover:bg-white/5 transition-colors">
-                    Get Directions
-                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Action Sidebar */}
-          <div className="lg:col-span-1">
+          {/* Action Sidebar (Asking Price, etc.) - Placed middle in DOM for mobile, forced to right column on desktop */}
+          <div className="lg:col-span-1 lg:col-start-3 lg:row-start-1 lg:row-span-2">
             <div className="sticky top-24 space-y-6">
               
               {/* Pricing Card */}
               <div className="card border-primary/20 bg-dark-card/80 backdrop-blur-xl p-8 relative overflow-hidden group hover:border-primary/50 transition-colors">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-bl-full -z-10 group-hover:bg-primary/20 transition-colors" />
                 <p className="text-muted text-sm mb-2 uppercase tracking-widest font-bold">Asking Price</p>
-                <p className="text-4xl lg:text-5xl font-display font-black text-white mb-2">
+                <p className="text-3xl md:text-4xl lg:text-5xl font-display font-black text-white mb-2">
                   {formatPrice(price)}
                 </p>
                 <p className="text-sm text-primary/80 font-semibold mb-8 flex items-center gap-2">
@@ -317,13 +257,13 @@ export default function PropertyDetailPage() {
               {/* Seller Info Card */}
               <div className="bg-dark-card border border-dark-border rounded-2xl p-6">
                 <h3 className="font-display font-bold text-lg mb-4">Seller Information</h3>
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 rounded-full bg-dark-hover border-2 border-primary flex items-center justify-center text-xl font-bold text-primary shadow-[0_0_15px_rgba(255,215,0,0.2)]">
+                <div className="flex items-center gap-3 md:gap-4 mb-6">
+                  <div className="w-12 h-12 md:w-14 md:h-14 rounded-full bg-dark-hover border-2 border-primary flex items-center justify-center text-lg md:text-xl font-bold text-primary shadow-[0_0_15px_rgba(255,215,0,0.2)]">
                     {property.sellerName?.charAt(0) || 'S'}
                   </div>
                   <div>
-                    <p className="font-bold text-white text-lg">{property.sellerName || 'Verified Seller'}</p>
-                    <p className="text-sm text-muted flex items-center gap-1"><ShieldCheck size={14} className="text-emerald-400" /> Identity Verified</p>
+                    <p className="font-bold text-white text-base md:text-lg">{property.sellerName || 'Verified Seller'}</p>
+                    <p className="text-xs md:text-sm text-muted flex items-center gap-1"><ShieldCheck size={14} className="text-emerald-400" /> Identity Verified</p>
                   </div>
                 </div>
 
@@ -336,6 +276,72 @@ export default function PropertyDetailPage() {
               </div>
               
 
+            </div>
+          </div>
+
+          {/* Description & Rest */}
+          <div className="lg:col-span-2 lg:col-start-1 lg:row-start-2 space-y-8">
+            {/* Description */}
+            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 font-display flex items-center gap-2">
+                <FileTextIcon /> Property Description
+              </h2>
+              <div className="prose prose-invert max-w-none text-muted leading-relaxed">
+                <p className="whitespace-pre-wrap text-sm md:text-lg">{property.description}</p>
+              </div>
+            </div>
+
+            {/* Amenities */}
+            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 font-display flex items-center gap-2">
+                <SparklesIcon /> Premium Amenities
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {property.amenities?.map((a: string) => (
+                  <div key={a} className="flex items-center gap-3 p-4 rounded-xl bg-black/40 border border-dark-border hover:border-primary/30 transition-colors">
+                    <div className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-sm font-semibold text-white/90 capitalize">
+                      {a.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="bg-dark-card border border-dark-border p-6 md:p-8 rounded-2xl">
+              <h2 className="text-xl md:text-2xl font-bold mb-4 md:mb-6 font-display flex items-center gap-2">
+                <MapPin className="text-primary" /> Location
+              </h2>
+              <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">City</p>
+                  <p className="font-bold">{city || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">State</p>
+                  <p className="font-bold">{state || '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">Pincode</p>
+                  <p className="font-bold">{pincode || '—'}</p>
+                </div>
+                <div className="col-span-2 md:col-span-1">
+                  <p className="text-xs text-muted uppercase tracking-wider mb-1">Address</p>
+                  <p className="font-bold text-sm">{address || '—'}</p>
+                </div>
+              </div>
+              <div className="h-[400px] w-full rounded-xl overflow-hidden border border-dark-border relative bg-black/50">
+                {lat !== undefined && lng !== undefined ? (
+                  <PropertyMap properties={[property as any]} center={{ lat, lng }} zoom={15} />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                    <MapPin size={48} className="text-primary/50 mb-4" />
+                    <h3 className="font-display font-bold text-xl mb-2">Location Not Available</h3>
+                    <p className="text-muted text-sm max-w-sm mb-6">Coordinates for this property are missing.</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

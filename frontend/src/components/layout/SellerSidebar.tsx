@@ -8,7 +8,8 @@ import {
   LogOut, 
   MessageSquare, 
   CheckCircle,
-  Sparkles
+  Sparkles,
+  Settings
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
@@ -48,6 +49,7 @@ export function SellerSidebar({ isOpen, mobileMenuOpen, onMobileClose }: SellerS
   ];
 
   const bottomItems = [
+    { icon: Settings, label: 'Profile Settings', path: '/seller/profile' },
     { icon: ShieldCheck, label: 'Identity Verification', path: '/seller/identity-documents' },
   ];
 

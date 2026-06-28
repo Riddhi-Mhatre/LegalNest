@@ -65,6 +65,13 @@ export const getDocumentUploadUrl = async (
   return response.data.data;
 };
 
+export const getDocumentReadUrl = async (s3Key: string): Promise<string> => {
+  const response = await api.get('/seller/document-read-url', {
+    params: { s3Key },
+  });
+  return response.data.data.readUrl;
+};
+
 /** Infer MIME type from file extension when browser provides an empty type */
 function inferMimeType(fileName: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase();

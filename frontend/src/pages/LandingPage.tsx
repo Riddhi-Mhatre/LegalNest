@@ -34,6 +34,11 @@ export default function LandingPage() {
       <section className="relative overflow-hidden bg-hero-gradient min-h-[calc(100vh-64px)] flex flex-col justify-center px-4 py-20">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,215,0,0.08),transparent_60%)]" />
         
+        {/* Dynamic Glowing Blobs */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] sm:w-[60vw] sm:h-[60vw] max-w-[800px] max-h-[800px] bg-primary/10 blur-[80px] sm:blur-[120px] rounded-full pointer-events-none animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute top-1/4 right-1/4 w-[60vw] h-[60vw] sm:w-[40vw] sm:h-[40vw] max-w-[500px] max-h-[500px] bg-secondary/10 blur-[80px] sm:blur-[100px] rounded-full pointer-events-none animate-pulse" style={{ animationDuration: '6s', animationDelay: '1s' }} />
+        <div className="absolute bottom-1/4 left-1/4 w-[50vw] h-[50vw] sm:w-[30vw] sm:h-[30vw] max-w-[400px] max-h-[400px] bg-purple-500/10 blur-[80px] sm:blur-[100px] rounded-full pointer-events-none animate-pulse" style={{ animationDuration: '5s', animationDelay: '2s' }} />
+        
         {/* Decorative Background Icons */}
         <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
           <Building size={120} className="absolute top-[10%] left-[5%] text-white/5 animate-float" style={{ animationDelay: '0s' }} />
@@ -43,38 +48,38 @@ export default function LandingPage() {
           <Landmark size={110} className="absolute top-[50%] left-[80%] text-white/5 animate-float" style={{ animationDelay: '1.5s' }} />
         </div>
 
-        <div className="max-w-4xl mx-auto text-center relative z-10 w-full">
-          <div className="badge-live inline-flex mb-6">🔴 Live Auctions Happening Now</div>
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6 tracking-tight">
+        <div className="max-w-4xl mx-auto text-center relative z-10 w-full pt-4 md:pt-0">
+          <div className="badge-live inline-flex mb-4 md:mb-6 text-[10px] md:text-xs px-2 py-1 md:px-3 md:py-1.5">🔴 Live Auctions Happening Now</div>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-3 md:mb-6 tracking-tight">
             Find Your Perfect Property
-            <br />
-            <span className="text-gradient-gold">With Complete Trust</span>
+            <br className="hidden sm:block" />
+            <span className="text-gradient-gold block mt-1 sm:mt-0 sm:inline">With Complete Trust</span>
           </h1>
-          <p className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+          <p className="text-muted text-sm sm:text-base md:text-xl max-w-2xl mx-auto mb-8 md:mb-10 leading-relaxed px-2">
             GharBid is India's most trusted real estate marketplace — verified listings, live English auctions, and secure communications. All offline transactions, zero hidden fees.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center w-full max-w-[280px] sm:max-w-none mx-auto px-2 sm:px-0">
             {isAuthenticated ? (
-              <Link to={`/${user?.role}/dashboard`} className="btn-primary flex items-center gap-2" id="hero-dashboard-btn">
-                Go to Dashboard <ArrowRight size={16} />
+              <Link to={`/${user?.role}/dashboard`} className="flex items-center justify-center gap-2 text-sm md:text-base py-3 px-6 rounded-xl font-bold bg-gradient-to-r from-primary to-yellow-500 text-black shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:shadow-[0_0_30px_rgba(255,215,0,0.7)] hover:scale-105 active:scale-95 transition-all duration-300" id="hero-dashboard-btn">
+                Go to Dashboard <ArrowRight size={18} className="animate-pulse" />
               </Link>
             ) : (
-              <Link to={ROUTES.REGISTER} className="btn-primary flex items-center gap-2" id="hero-register-btn">
-                Get Started Free <ArrowRight size={16} />
+              <Link to={ROUTES.REGISTER} className="flex items-center justify-center gap-2 text-sm md:text-base py-3 px-6 rounded-xl font-bold bg-gradient-to-r from-primary to-yellow-500 text-black shadow-[0_0_20px_rgba(255,215,0,0.4)] hover:shadow-[0_0_30px_rgba(255,215,0,0.7)] hover:scale-105 active:scale-95 transition-all duration-300" id="hero-register-btn">
+                Get Started <ArrowRight size={18} className="animate-pulse" />
               </Link>
             )}
-            <Link to={ROUTES.PROPERTIES} className="btn-secondary flex items-center gap-2" id="hero-browse-btn">
+            <Link to={ROUTES.PROPERTIES} className="flex items-center justify-center gap-2 text-sm md:text-base py-3 px-6 rounded-xl font-bold bg-dark-card/80 backdrop-blur-md border border-white/10 text-white shadow-lg hover:bg-white/10 hover:border-white/30 hover:shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95 transition-all duration-300" id="hero-browse-btn">
               Browse Properties
             </Link>
-            <Link to="/auctions" className="btn-secondary flex items-center gap-2 shadow-[0_0_15px_rgba(0,128,128,0.5)] hover:shadow-[0_0_30px_rgba(0,128,128,0.8)] hover:-translate-y-1 transition-all duration-300" id="hero-auction-btn">
-              <Gavel size={16} className="animate-pulse" /> Join Live Auction
+            <Link to="/auctions" className="flex items-center justify-center gap-2 text-sm md:text-base py-3 px-6 rounded-xl font-bold bg-gradient-to-r from-secondary to-teal-400 text-black shadow-[0_0_20px_rgba(0,128,128,0.4)] hover:shadow-[0_0_30px_rgba(0,128,128,0.7)] hover:scale-105 active:scale-95 transition-all duration-300" id="hero-auction-btn">
+              <Gavel size={18} className="animate-bounce hidden sm:block" /> Auctions
             </Link>
           </div>
         </div>
 
         {/* Scroll Indicator */}
         <div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center text-primary drop-shadow-[0_0_15px_rgba(255,215,0,0.6)] cursor-pointer animate-bounce hover:text-yellow-300 transition-colors" 
+          className="absolute bottom-8 left-0 right-0 mx-auto w-fit flex flex-col items-center text-primary drop-shadow-[0_0_15px_rgba(255,215,0,0.6)] cursor-pointer animate-bounce hover:text-yellow-300 transition-colors" 
           onClick={() => window.scrollTo({ top: window.innerHeight - 64, behavior: 'smooth' })}
           aria-label="Scroll down"
         >
@@ -98,13 +103,13 @@ export default function LandingPage() {
         </section>
 
         {/* How it Works */}
-        <section className="py-16 px-4 flex-1 flex flex-col justify-center">
+        <section className="py-16 px-6 md:px-8 flex-1 flex flex-col justify-center">
           <div className="max-w-5xl mx-auto w-full">
             <h2 className="section-title text-center mb-2">How <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-primary drop-shadow-[0_0_10px_rgba(0,128,128,0.3)]">GharBid</span> Works</h2>
             <p className="section-subtitle text-center mb-12">A simple, transparent process from discovery to ownership</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 place-items-center">
               {STEPS.map((step, i) => (
-                <div key={step.title} className="card p-6 text-center group border-b-2 border-b-transparent hover:border-b-primary hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(255,215,0,0.15)] transition-all duration-300 bg-dark-card relative">
+                <div key={step.title} className="card p-6 text-center group border-b-2 border-b-transparent hover:border-b-primary hover:-translate-y-2 hover:shadow-[0_0_30px_rgba(255,215,0,0.15)] active:scale-95 active:-translate-y-1 transition-all duration-300 bg-dark-card relative w-full max-w-[340px] sm:max-w-none">
                   <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-primary/20 transition-colors">
                     <step.icon size={22} className="text-primary" />
                   </div>
@@ -121,7 +126,7 @@ export default function LandingPage() {
       {/* Partition 3: Featured Properties & CTA */}
       <div className="min-h-[calc(100vh-64px)] flex flex-col justify-center bg-dark-card/30">
         {/* Featured Properties */}
-        <section className="py-16 px-4">
+        <section className="py-16 px-6 md:px-8">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-end justify-between mb-8">
               <div>
@@ -131,16 +136,18 @@ export default function LandingPage() {
                 </h2>
                 <p className="section-subtitle">Verified and ready for viewing</p>
               </div>
-              <Link to={ROUTES.PROPERTIES} className="btn-ghost text-sm flex items-center gap-1" id="see-all-properties">
+              <Link to={ROUTES.PROPERTIES} className="btn-ghost text-sm flex items-center gap-1 active:scale-95 transition-transform" id="see-all-properties">
                 See All <ArrowRight size={14} />
               </Link>
             </div>
             {isLoading ? (
               <Loader label="Loading featured properties..." />
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 place-items-center">
                 {(properties ?? []).slice(0, 4).map((property: any) => (
-                  <PropertyCard key={property.propertyId} property={property} featured />
+                  <div key={property.propertyId} className="w-full max-w-[360px] sm:max-w-none">
+                    <PropertyCard property={property} featured />
+                  </div>
                 ))}
               </div>
             )}

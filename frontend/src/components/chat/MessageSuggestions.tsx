@@ -18,6 +18,7 @@ export const MessageSuggestions = ({ onSelectSuggestion, isAuctionRoom }: Messag
   const isBuyer = user?.role === 'buyer';
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showAuctionSuggestions, setShowAuctionSuggestions] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
 
   // ── Auction chat: flat chip list ──────────────────────────────────────────
   if (isAuctionRoom) {
@@ -110,18 +111,47 @@ export const MessageSuggestions = ({ onSelectSuggestion, isAuctionRoom }: Messag
     );
   }
 
+  if (showCategories) {
+    return (
+      <div className="p-3 border-t border-dark-border bg-dark-card/50">
+        <div className="flex items-center gap-2 mb-3">
+          <button
+            onClick={() => setShowCategories(false)}
+            className="p-1 hover:bg-dark-hover rounded-full transition-colors flex items-center justify-center text-muted hover:text-white"
+            aria-label="Close suggestions"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-sm font-bold text-white flex items-center gap-1.5">
+            <MessageCircle size={13} className="text-primary" />
+            Suggestion Categories
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              onClick={() => setSelectedCategory(suggestion.category)}
+              className="whitespace-nowrap flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dark-border bg-dark hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted hover:text-white"
+            >
+              <MessageCircle size={12} className="text-primary/70" />
+              {suggestion.category}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-3 border-t border-dark-border bg-dark-card/50 flex flex-wrap gap-2">
-      {suggestions.map((suggestion, index) => (
-        <button
-          key={index}
-          onClick={() => setSelectedCategory(suggestion.category)}
-          className="whitespace-nowrap flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-dark-border bg-dark hover:border-primary/50 hover:bg-primary/5 transition-colors text-muted hover:text-white"
-        >
-          <MessageCircle size={12} className="text-primary/70" />
-          {suggestion.category}
-        </button>
-      ))}
+    <div className="px-3 py-2 border-t border-dark-border bg-dark-card/50 flex items-center gap-2">
+      <button
+        onClick={() => setShowCategories(true)}
+        className="whitespace-nowrap flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 hover:border-primary hover:bg-primary/10 transition-colors text-primary"
+      >
+        <MessageCircle size={12} />
+        Quick Suggestions
+      </button>
     </div>
   );
 };

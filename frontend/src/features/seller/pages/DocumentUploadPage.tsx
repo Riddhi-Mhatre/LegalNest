@@ -1,6 +1,8 @@
-﻿import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { uploadDocumentToS3, saveDocumentsToProperty } from '../../../services/sellerService';
+import { useQuery } from '@tanstack/react-query';
+import { getProperty } from '../../../services/propertyService';
+import { uploadDocumentToS3, saveDocumentsToProperty, getDocumentReadUrl } from '../../../services/sellerService';
 import { toast } from 'sonner';
 import {
   FileText, Upload, CheckCircle, XCircle, Loader2,
@@ -75,6 +77,41 @@ export default function DocumentUploadPage() {
     Object.fromEntries(REQUIRED_DOCS.map(d => [d.key, { status: 'idle' }]))
   );
   const [submitting, setSubmitting] = useState(false);
+  const [previewDocUrl, setPreviewDocUrl] = useState<string | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
+
+  const handlePreview = async (s3Key: string) => {
+    try {
+      setLoadingPreview(s3Key);
+      const readUrl = await getDocumentReadUrl(s3Key);
+      setPreviewDocUrl(readUrl);
+    } catch (err: any) {
+      toast.error('Failed to load document preview.');
+    } finally {
+      setLoadingPreview(null);
+    }
+  };
+
+  const { data: propertyData } = useQuery({
+    queryKey: ['property', propertyId],
+    queryFn: () => getProperty(propertyId!),
+    enabled: !!propertyId,
+  });
+
+  useEffect(() => {
+    if (propertyData?.documents) {
+      setUploads(prev => {
+        const newUploads = { ...prev };
+        Object.keys(propertyData.documents).forEach(key => {
+          const s3Key = propertyData.documents[key];
+          if (s3Key && newUploads[key]) {
+            newUploads[key] = { status: 'done', s3Key, fileName: 'Uploaded Document' };
+          }
+        });
+        return newUploads;
+      });
+    }
+  }, [propertyData]);
 
   const setUploadState = (key: string, state: Partial<UploadState>) =>
     setUploads(prev => ({ ...prev, [key]: { ...prev[key], ...state } }));
@@ -281,9 +318,17 @@ export default function DocumentUploadPage() {
                       </label>
                     )}
                     {isDone && (
-                      <div className="flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-bold">
-                        <Eye size={14} /> Uploaded
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (state.s3Key) handlePreview(state.s3Key);
+                        }}
+                        disabled={loadingPreview === state.s3Key}
+                        className="flex items-center gap-1 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/20 text-emerald-400 text-sm font-bold cursor-pointer transition-colors disabled:opacity-50"
+                      >
+                        {loadingPreview === state.s3Key ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} 
+                        {loadingPreview === state.s3Key ? 'Loading...' : 'View'}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -319,6 +364,30 @@ export default function DocumentUploadPage() {
           </p>
         )}
       </div>
+
+      {/* Document Preview Modal */}
+      {previewDocUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+          <div className="bg-[#0A0A0A] border border-dark-border rounded-2xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-slide-up">
+            <div className="p-4 border-b border-dark-border flex items-center justify-between bg-black/45">
+              <h2 className="text-lg font-display font-bold text-white">Document Preview</h2>
+              <button 
+                onClick={() => setPreviewDocUrl(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
+              >
+                <X size={18} className="text-white" />
+              </button>
+            </div>
+            <div className="flex-1 bg-black/60 relative overflow-hidden">
+              {previewDocUrl.toLowerCase().match(/\.(jpeg|jpg|gif|png)$/) ? (
+                <img src={previewDocUrl} alt="Preview" className="w-full h-full object-contain p-4" />
+              ) : (
+                <iframe src={previewDocUrl} className="w-full h-full border-none" title="Document Preview" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

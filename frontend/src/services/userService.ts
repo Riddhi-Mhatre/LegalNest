@@ -18,6 +18,16 @@ export const uploadIdentityDocumentToS3 = async (file: File, docType: string): P
   return data.s3Key;
 };
 
+export const uploadAvatarToS3 = async (file: File): Promise<string> => {
+  const response = await api.post('/users/upload-avatar-url', {
+    fileName: file.name,
+    contentType: file.type,
+  });
+  const { uploadUrl, publicUrl } = response.data.data;
+  await axios.put(uploadUrl, file, { headers: { 'Content-Type': file.type } });
+  return publicUrl;
+};
+
 export const getNotifications = () => {
   const role = useAuthStore.getState().user?.role;
   const path = role === 'buyer' ? '/buyer/notifications' : '/users/notifications';

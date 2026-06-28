@@ -66,9 +66,9 @@ export const ChatInput = ({ roomId, disabled, disabledReason, isAuctionRoom }: C
           value={content}
           onChange={(e) => { setContent(e.target.value); sendTyping(roomId); }}
           onKeyDown={handleKeyDown}
-          placeholder="Type a message… (Enter to send)"
+          placeholder="Type a message..."
           rows={1}
-          className="input-field flex-1 resize-none max-h-32"
+          className="input-field flex-1 resize-none max-h-32 text-sm md:text-base py-2.5"
           aria-label="Type a message"
         />
         <button

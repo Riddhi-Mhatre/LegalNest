@@ -74,6 +74,27 @@ export const getDocumentUploadUrl = async (req, res, next) => {
   }
 };
 
+// GET /v1/seller/document-read-url
+// Returns a pre-signed S3 URL to view a legal document
+export const getDocumentReadUrl = async (req, res, next) => {
+  try {
+    const { s3Key } = req.query;
+
+    if (!s3Key) {
+      return res.status(HTTP.BAD_REQUEST).json({
+        success: false,
+        error: { code: 'READ_001', message: 's3Key is required' },
+      });
+    }
+
+    const readUrl = await s3Service.getDocumentReadUrl(s3Key);
+    res.json({ success: true, data: { readUrl } });
+  } catch (err) {
+    console.error('[getDocumentReadUrl] ERROR:', err?.name, '-', err?.message);
+    next(err);
+  }
+};
+
 // PATCH /v1/seller/properties/:id/documents
 // Saves uploaded document S3 keys to the property record as a named-key object
 export const saveDocuments = async (

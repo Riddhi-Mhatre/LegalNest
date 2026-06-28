@@ -10,7 +10,7 @@ import { ChatWindow } from '../components/chat/ChatWindow';
 import type { ChatRoom } from '../types/chat.types';
 import {
   MessageSquare, Users, Clock, CheckCircle, XCircle,
-  Building2, User, Inbox, ChevronRight, X, Gavel
+  Building2, User, Inbox, ChevronRight, X, Gavel, ChevronLeft
 } from 'lucide-react';
 import { formatRelativeTime } from '../utils/formatters';
 import { toast } from 'sonner';
@@ -116,7 +116,7 @@ export default function ChatPage() {
 
   // ─── Room list panel (shared for property + auction tabs) ─
   const RoomList = ({ roomsList }: { roomsList: ChatRoom[] }) => (
-    <div className="w-64 shrink-0 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+    <div className={`w-full md:w-64 shrink-0 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex-col overflow-hidden ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>
       <div className="p-4 border-b border-dark-border">
         <h3 className="font-display font-bold text-sm uppercase tracking-wider text-muted">Conversations</h3>
       </div>
@@ -172,17 +172,33 @@ export default function ChatPage() {
   );
 
   // ─── Chat area panel (shared) ──────────────────────────────
-  const ChatArea = () => (
-    <div className="flex-1 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex flex-col overflow-hidden">
+  const ChatArea = () => {
+    const currentRoom = allRooms.find(r => r.roomId === activeRoomId);
+    const otherParty = currentRoom ? (isSeller ? currentRoom.buyerName : 'Seller') : 'Secure Conversation';
+
+    return (
+    <div className={`flex-1 min-h-0 bg-dark-card border border-dark-border rounded-2xl flex-col overflow-hidden ${!activeRoomId ? 'hidden md:flex' : 'flex'}`}>
       {activeRoomId ? (
         <>
-          <div className="p-4 border-b border-dark-border bg-black/20 backdrop-blur-sm flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center">
-              <MessageSquare size={16} className="text-primary" />
+          <div 
+            className="p-3 md:p-4 border-b border-dark-border bg-black/20 backdrop-blur-sm flex items-center gap-3 cursor-pointer md:cursor-default hover:bg-white/5 transition-colors"
+            onClick={() => {
+              if (window.innerWidth < 768) setActiveRoom(null);
+            }}
+            title="Tap to go back to list"
+          >
+            <button className="md:hidden p-1.5 -ml-1.5 mr-1 text-muted hover:text-white rounded-lg shrink-0 transition-colors">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="w-9 h-9 rounded-full bg-dark-hover border border-dark-border flex items-center justify-center shrink-0">
+              {currentRoom?.source === 'auction' ? <Gavel size={16} className="text-primary" /> : <User size={16} className="text-primary" />}
             </div>
-            <div>
-              <p className="font-bold text-sm text-white">Secure Conversation</p>
-              <p className="text-xs text-muted">End-to-end monitored for your safety</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-bold text-sm text-white flex items-center gap-2 truncate">
+                {otherParty}
+                <span className="md:hidden text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded uppercase tracking-wider font-bold">Tap to Back</span>
+              </p>
+              <p className="text-xs text-muted truncate max-w-xs">{currentRoom?.propertyTitle || 'End-to-end monitored for your safety'}</p>
             </div>
           </div>
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -201,7 +217,7 @@ export default function ChatPage() {
         </div>
       )}
     </div>
-  );
+  )};
 
   return (
     <div className="flex-1 flex flex-col h-full w-full bg-dark text-white overflow-hidden">
@@ -212,16 +228,16 @@ export default function ChatPage() {
           {isSeller && (
             <button
               onClick={() => setActiveTab('inquiries')}
-              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
+              className={`flex-1 min-w-[70px] md:min-w-[120px] flex items-center justify-center gap-1 md:gap-2 px-1 md:px-4 py-1 md:py-2.5 rounded-md text-[10px] md:text-sm font-bold transition-all ${
                 activeTab === 'inquiries'
                   ? 'bg-primary text-black shadow-md'
                   : 'text-muted hover:text-white hover:bg-dark-hover'
               }`}
             >
-              <Inbox size={18} />
-              Inquiries
+              <Inbox size={14} className="md:w-[18px] md:h-[18px]" />
+              <span className="truncate">Inquiries</span>
               {pendingInquiries.length > 0 && (
-                <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center">
+                <span className="w-3.5 h-3.5 md:w-5 md:h-5 rounded-full bg-red-500 text-white text-[8px] md:text-[10px] font-black flex items-center justify-center shrink-0">
                   {pendingInquiries.length}
                 </span>
               )}
@@ -231,16 +247,16 @@ export default function ChatPage() {
           {/* Property Chats tab */}
           <button
             onClick={() => setActiveTab('property-chats')}
-            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
+            className={`flex-1 min-w-[90px] md:min-w-[140px] flex items-center justify-center gap-1 md:gap-2 px-1 md:px-4 py-1 md:py-2.5 rounded-md text-[10px] md:text-sm font-bold transition-all ${
               activeTab === 'property-chats'
                 ? 'bg-primary text-black shadow-md'
                 : 'text-muted hover:text-white hover:bg-dark-hover'
             }`}
           >
-            <Building2 size={18} />
-            Property Chats
+            <Building2 size={14} className="md:w-[18px] md:h-[18px]" />
+            <span className="truncate">Property Chats</span>
             {propertyRooms.length > 0 && (
-              <span className="w-5 h-5 rounded-full bg-dark-hover text-white text-[10px] font-black flex items-center justify-center">
+              <span className="w-3.5 h-3.5 md:w-5 md:h-5 rounded-full bg-dark-hover text-white text-[8px] md:text-[10px] font-black flex items-center justify-center shrink-0">
                 {propertyRooms.length}
               </span>
             )}
@@ -249,16 +265,16 @@ export default function ChatPage() {
           {/* Auction Chats tab */}
           <button
             onClick={() => setActiveTab('auction-chats')}
-            className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-sm font-bold transition-all ${
+            className={`flex-1 min-w-[90px] md:min-w-[140px] flex items-center justify-center gap-1 md:gap-2 px-1 md:px-4 py-1 md:py-2.5 rounded-md text-[10px] md:text-sm font-bold transition-all ${
               activeTab === 'auction-chats'
                 ? 'bg-primary text-black shadow-md'
                 : 'text-muted hover:text-white hover:bg-dark-hover'
             }`}
           >
-            <Gavel size={18} />
-            Auction Chats
+            <Gavel size={14} className="md:w-[18px] md:h-[18px]" />
+            <span className="truncate">Auction Chats</span>
             {auctionRooms.length > 0 && (
-              <span className="w-5 h-5 rounded-full bg-dark-hover text-white text-[10px] font-black flex items-center justify-center">
+              <span className="w-3.5 h-3.5 md:w-5 md:h-5 rounded-full bg-dark-hover text-white text-[8px] md:text-[10px] font-black flex items-center justify-center shrink-0">
                 {auctionRooms.length}
               </span>
             )}

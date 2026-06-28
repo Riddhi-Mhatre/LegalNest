@@ -81,7 +81,7 @@ export const PropertyCard = ({ property, featured }: PropertyCardProps) => {
     <Link
       to={detailUrl}
       id={`property-card-${property.propertyId}`}
-      className={`card group overflow-hidden block transition-all duration-300 hover:-translate-y-1 hover:shadow-gold ${featured ? 'card-gold' : ''}`}
+      className={`card group overflow-hidden block transition-all duration-300 hover:-translate-y-1 hover:shadow-gold active:scale-[0.98] active:-translate-y-1 ${featured ? 'card-gold' : ''}`}
       aria-label={`View ${property.title}`}
     >
       {/* Image */}

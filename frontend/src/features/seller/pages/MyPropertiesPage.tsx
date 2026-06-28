@@ -164,7 +164,7 @@ export default function MyPropertiesPage() {
                   className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-200 border ${
                     isActive
                       ? 'bg-primary text-black border-primary shadow-gold'
-                      : 'bg-dark-card/40 text-muted hover:text-white border-dark-border hover:bg-white/5 hover:border-white/10'
+                      : 'bg-dark-card/40 text-muted hover:text-white border-dark-border hover:bg-white/5 hover:border-white/10 active:scale-95 active:bg-white/10'
                   }`}
                 >
                   {tab.label}
@@ -228,7 +228,7 @@ export default function MyPropertiesPage() {
               return (
                 <div
                   key={property.propertyId}
-                  className="relative flex flex-col bg-dark-card/40 backdrop-blur-md border border-dark-border hover:border-primary/20 rounded-2xl overflow-hidden group transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,215,0,0.04)] h-full shadow-lg"
+                  className="relative flex flex-col bg-dark-card/40 backdrop-blur-md border border-dark-border hover:border-primary/20 active:border-primary/40 rounded-2xl overflow-hidden group transition-all duration-500 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_rgba(255,215,0,0.04)] active:scale-[0.98] active:-translate-y-0.5 h-full shadow-lg"
                 >
                   {/* Thumbnail Container */}
                   <div className="relative aspect-[16/10] bg-black overflow-hidden border-b border-dark-border">
@@ -272,45 +272,32 @@ export default function MyPropertiesPage() {
                     </div>
 
                     <div className="space-y-4">
-                      {/* Status badges row */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <div className={`flex items-center gap-1 bg-white/5 text-[9px] font-bold px-2 py-1.5 rounded-md border uppercase tracking-wider ${
-                          feePaid ? 'border-emerald-500/20 text-emerald-400' : 'border-orange-500/20 text-orange-400'
-                        }`}>
-                          <CreditCard size={11} className="shrink-0" /> {feePaid ? 'Fee Paid' : 'Fee Pending'}
-                        </div>
-
-                        <div className={`flex items-center gap-1 bg-white/5 text-[9px] font-bold px-2 py-1.5 rounded-md border uppercase tracking-wider ${
-                          allDocsDone ? 'border-emerald-500/20 text-emerald-400' : 'border-yellow-500/20 text-yellow-400'
-                        }`}>
-                          {allDocsDone ? <><ShieldCheck size={11} className="shrink-0" /> Docs Done</> : <><ShieldAlert size={11} className="shrink-0" /> Docs: {uploaded}/{total}</>}
-                        </div>
-                      </div>
+                      {/* Status badges row removed per user request */}
 
                       {/* Action Buttons */}
                       <div className="grid grid-cols-2 gap-2 pt-4 border-t border-dark-border/80">
                         <button
                           onClick={() => navigate(`/properties/${property.propertyId}`)}
-                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 active:bg-white/20 transition-all"
                         >
                           <Eye size={13} /> View
                         </button>
                         <button
                           onClick={() => navigate(`/seller/add-property?edit=${property.propertyId}`)}
-                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-primary hover:border-primary/30 transition-colors"
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-primary hover:border-primary/30 active:scale-95 active:bg-white/20 active:border-primary/50 transition-all"
                         >
                           <Pencil size={13} /> Edit
                         </button>
                         <button
-                          onClick={() => navigate(`/seller/add-property`)} 
-                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-secondary hover:border-secondary/30 transition-colors"
+                          onClick={() => navigate(`/seller/documents?propertyId=${property.propertyId}`)} 
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:text-secondary hover:border-secondary/30 active:scale-95 active:bg-white/20 active:border-secondary/50 transition-all"
                         >
                           <FileText size={13} /> Docs
                         </button>
                         <button
                           onClick={() => handleDelete(property.propertyId, property.title)}
                           disabled={deleteMutation.isPending}
-                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors disabled:opacity-50"
+                          className="flex items-center justify-center gap-1.5 py-2 text-xs font-bold text-white bg-white/5 border border-white/10 rounded-xl hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 active:scale-95 active:bg-red-500/20 active:border-red-500/50 transition-all disabled:opacity-50"
                         >
                           <Trash2 size={13} /> Delete
                         </button>

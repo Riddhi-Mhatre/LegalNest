@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { BuyerSidebar } from './BuyerSidebar';
-import { Bell, Menu, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Bell, Menu, LogOut, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useState, useEffect } from 'react';
 import { NotificationPanel } from '../common/NotificationPanel';
@@ -11,6 +11,7 @@ import { getNotifications } from '../../services/userService';
 import { ROUTES } from '../../utils/constants';
 import { SearchBar } from '../common/SearchBar';
 import { useChatStore } from '../../store/chatStore';
+import { BackButton } from '../common/BackButton';
 
 export function BuyerLayout() {
   const { user, logout } = useAuthStore();
@@ -88,8 +89,9 @@ export function BuyerLayout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col h-screen relative min-w-0">
         {/* Top Navbar */}
-        <header className="h-20 border-b border-dark-border bg-black/50 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-30">
+        <header className="h-14 md:h-20 border-b border-dark-border bg-black/50 backdrop-blur-md flex items-center justify-between px-4 md:px-6 sticky top-0 z-30">
           <div className="flex items-center gap-4">
+            <BackButton />
             <button 
               className="p-2 -ml-2 text-white lg:hidden rounded-full hover:bg-white/10"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -129,8 +131,12 @@ export function BuyerLayout() {
                 className="flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
               >
                 <div className={`w-10 h-10 rounded-full p-[2px] shrink-0 ${user?.isVerified ? 'bg-emerald-500' : 'bg-red-500'}`}>
-                  <div className="w-full h-full bg-black rounded-full flex items-center justify-center">
-                    <span className={`font-bold text-sm ${user?.isVerified ? 'text-emerald-400' : 'text-red-400'}`}>{user?.name?.charAt(0) || 'B'}</span>
+                  <div className="w-full h-full bg-black rounded-full flex items-center justify-center overflow-hidden">
+                    {user?.profileImage ? (
+                      <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      <span className={`font-bold text-sm ${user?.isVerified ? 'text-emerald-400' : 'text-red-400'}`}>{user?.name?.charAt(0) || 'B'}</span>
+                    )}
                   </div>
                 </div>
                 <div className="hidden md:block">
@@ -143,6 +149,12 @@ export function BuyerLayout() {
               
               {profileMenuOpen && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-dark-card border border-dark-border rounded-xl shadow-xl z-50 py-1 animate-slide-up">
+                  <button 
+                    onClick={() => { setProfileMenuOpen(false); navigate('/buyer/profile'); }} 
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-muted hover:text-white hover:bg-dark-hover transition-colors"
+                  >
+                    <Settings size={14} /> Profile Settings
+                  </button>
                   <button onClick={handleLogout} className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-dark-hover transition-colors">
                     <LogOut size={14} /> Logout
                   </button>
