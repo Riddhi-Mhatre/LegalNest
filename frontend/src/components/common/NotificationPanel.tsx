@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, ShieldCheck, Gavel, Check, Trash2, Loader2 } from 'lucide-react';
+import { Bell, ShieldCheck, Gavel, Check, Trash2, Loader2, Building, Heart, MessageSquare, Handshake } from 'lucide-react';
 import { getNotifications, markNotificationRead, deleteNotification } from '../../services/userService';
 import { formatRelativeTime } from '../../utils/formatters';
 import { toast } from 'sonner';
@@ -51,6 +51,14 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
       case 'legal':
       case 'document_verified':
         return ShieldCheck;
+      case 'property_listed':
+        return Building;
+      case 'buyer_interest':
+        return Heart;
+      case 'chat_notification':
+        return MessageSquare;
+      case 'deal_finalized':
+        return Handshake;
       default:
         return Bell;
     }
@@ -60,12 +68,20 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
     switch (type) {
       case 'auction':
       case 'outbid':
+      case 'inquiry_rejected':
         return { color: 'text-destructive', bg: 'bg-destructive/10' };
       case 'auction_won':
-        return { color: 'text-primary', bg: 'bg-primary/10' };
+      case 'deal_finalized':
+        return { color: 'text-emerald-400', bg: 'bg-emerald-400/10' };
       case 'legal':
       case 'document_verified':
         return { color: 'text-secondary', bg: 'bg-secondary/10' };
+      case 'property_listed':
+        return { color: 'text-blue-400', bg: 'bg-blue-400/10' };
+      case 'buyer_interest':
+        return { color: 'text-pink-400', bg: 'bg-pink-400/10' };
+      case 'chat_notification':
+        return { color: 'text-purple-400', bg: 'bg-purple-400/10' };
       default:
         return { color: 'text-primary', bg: 'bg-primary/10' };
     }

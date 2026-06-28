@@ -1,6 +1,7 @@
 import * as UserModel from '../models/dynamodb/UserModel.js';
 import * as UserDocsModel from '../models/dynamodb/UserDocsModel.js';
 import * as s3Service from '../services/s3Service.js';
+import * as buyerNotificationService from '../services/buyerNotificationService.js';
 import { HTTP } from '../utils/constants.js';
 
 // GET /v1/users/profile
@@ -50,8 +51,32 @@ export const getDocumentUploadUrl = async (req, res, next) => {
 export const getNotifications = async (req, res, next) => {
   try {
     const userId = req.user.userId;
-    // TODO: query NotificationsModel
-    res.json({ success: true, data: [] });
+    const notifications = await buyerNotificationService.getNotifications(userId);
+    res.json({ success: true, data: notifications });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /v1/users/notifications/:notificationId/read
+export const markNotificationRead = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { notificationId } = req.params;
+    await buyerNotificationService.markNotificationRead(userId, notificationId);
+    res.json({ success: true, data: { message: 'Marked as read' } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// DELETE /v1/users/notifications/:notificationId
+export const deleteNotification = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+    const { notificationId } = req.params;
+    await buyerNotificationService.deleteNotification(userId, notificationId);
+    res.json({ success: true, data: { message: 'Deleted' } });
   } catch (err) {
     next(err);
   }

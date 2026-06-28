@@ -3,6 +3,7 @@ import * as InquiryModel from '../models/dynamodb/InquiryModel.js';
 import * as s3Service from '../services/s3Service.js';
 import { generateUUID } from '../utils/helpers.js';
 import { HTTP } from '../utils/constants.js';
+import { createNotification } from '../services/notificationService.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3Client } from '../config/aws.js';
@@ -92,6 +93,9 @@ export const createProperty = async (req, res, next) => {
       createdAt: now,
       updatedAt: now,
     });
+
+    await createNotification(sellerId, 'property_listed', 'New Property Listed', `Your property has been successfully listed.`, { propertyId });
+
     res.status(HTTP.CREATED).json({ success: true, data: property });
   } catch (err) {
     next(err);
@@ -159,6 +163,8 @@ export const expressInterest = async (req, res, next) => {
           }
         }).catch(console.error);
 
+        await createNotification(property.sellerId, 'buyer_interest', 'New Buyer Interest', `${buyerName} is interested in your scheduled auction for ${property.title}`, { propertyId });
+
         return res.status(HTTP.CREATED).json({ success: true, data: { message: 'Interest registered for auction' } });
       }
 
@@ -196,6 +202,8 @@ export const expressInterest = async (req, res, next) => {
         });
       }
     }).catch(console.error);
+
+    await createNotification(property.sellerId, 'buyer_interest', 'New Buyer Interest', `You have a new property inquiry from ${buyerName}`, { propertyId, inquiryId: inquiry.inquiryId });
 
     res.status(HTTP.CREATED).json({ success: true, data: inquiry });
   } catch (err) {
